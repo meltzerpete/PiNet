@@ -1,14 +1,17 @@
-from Models.GCN.gcn_utils import *
+from keras.models import Model
+from keras import backend as K
 from ImportData import DropboxLoader as dl
 import networkx as nx
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, cross_val_predict
 from scipy.sparse import csr_matrix
-from keras.layers import Input, Dense, Dropout, TimeDistributed
-from keras.models import Model
+from keras.layers import Input, Lambda, Dense, Dropout, TimeDistributed
 from keras.optimizers import Adam
 from keras.regularizers import l2
+from model.MyGCN import MyGCN
+from Models.GCN.gcn_utils import *
+import keras
 
 
 def get_A_X(loader):
@@ -72,3 +75,12 @@ Y = np.array(Y)
 
 folds = list(StratifiedKFold(n_splits=10, shuffle=True, random_state=2).split(G, Y))
 
+a = Input(batch_shape=G.shape)
+
+print("keras version: ", keras.__version__)
+
+x = MyGCN(2)(a)
+x = MyGCN(5)(x)
+x = Lambda(lambda G: G[:, :, G.shape[1]:])(x)
+model = Model(inputs=a, outputs=x)
+model.summary()
