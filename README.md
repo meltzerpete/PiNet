@@ -11,6 +11,10 @@
 - `G` <- concat `A_` (N x n x n) and `X` (N x n x d) on `axis=2` to get (N x n x (n+d)) tensor
 
 
+## Computation
+
+- `MyGCN` layer takes concatenation of `A_` and `X`, splits it, performs multiplications, then concats for single tensor output
+
 ## Evaluation
 
 StratifiedKFold:
@@ -19,6 +23,9 @@ StratifiedKFold:
 
 ## Next Steps
 
-- func to split back to `A_` and `X`
 - convert to class
 - GCN-GC layer
+- add biases
+- regularisation?
+- dropout
+- activations?
