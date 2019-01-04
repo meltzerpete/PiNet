@@ -1,12 +1,13 @@
 from keras.models import Model
 from keras import backend as K
+from keras.utils import to_categorical
 from ImportData import DropboxLoader as dl
 import networkx as nx
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, cross_val_predict
 from scipy.sparse import csr_matrix
-from keras.layers import Input, Lambda, Dense, Dropout, TimeDistributed
+from keras.layers import Input, Lambda, Dot, Permute, Activation, Reshape, Dense, Dropout, TimeDistributed
 from keras.optimizers import Adam
 from keras.regularizers import l2
 from model.MyGCN import MyGCN
@@ -65,7 +66,8 @@ def get_G(A, X):
 
 
 # prepare data
-mutag = dl.DropboxLoader("MUTAG")
+print("preparing data")
+mutag = dl.DropboxLoader("NCI1")
 A, X = get_A_X(mutag)
 G = get_G(A, X)
 Y = mutag.get_graph_label()
@@ -75,12 +77,48 @@ Y = np.array(Y)
 
 folds = list(StratifiedKFold(n_splits=10, shuffle=True, random_state=2).split(G, Y))
 
-a = Input(batch_shape=G.shape)
+accuracies = []
+for j, (train_idx, val_idx) in enumerate(folds):
+    print("split :", j)
+    G_train = G[train_idx]
+    Y_train = to_categorical(Y)[train_idx]
+    G_test = G[val_idx]
+    Y_test = to_categorical(Y)[val_idx]
 
-print("keras version: ", keras.__version__)
+    inputs = Input(shape=(G.shape[1:]))
 
-x = MyGCN(2)(a)
-x = MyGCN(5)(x)
-x = Lambda(lambda G: G[:, :, G.shape[1]:])(x)
-model = Model(inputs=a, outputs=x)
-model.summary()
+    # x1 = Dropout(0.5)(inputs)
+    x1 = MyGCN(64, activation='relu')(inputs)
+    # x1 = Dropout(0.5)(x1)
+    x1 = MyGCN(1, activation='sigmoid')(x1)
+    x1 = Lambda(lambda G: G[:, :, G.shape[1]:])(x1)
+    x1 = Permute((2, 1))(x1)
+    # x1 = Dropout(0.5)(x1)
+
+    # x2 = Dropout(0.5)(inputs)
+    x2 = MyGCN(64, activation='relu')(inputs)
+    # x2 = Dropout(0.5)(x2)
+    x2 = MyGCN(2, activation='relu')(x2)
+    x2 = Lambda(lambda G: G[:, :, G.shape[1]:])(x2)
+    # x2 = Dropout(0.5)(x2)
+
+    x3 = Dot(axes=(2, 1))([x1, x2])
+    x3 = Activation(activation='softmax', input_shape=(1, 2))(x3)
+    x3 = Reshape((2,))(x3)
+
+    model = Model(inputs=inputs, outputs=x3)
+    model.compile(optimizer=Adam(), loss='categorical_crossentropy')
+    # model.summary()
+
+    history = model.fit(G_train, Y_train, G_train.shape[0], epochs=200, verbose=1)
+    preds = model.predict(G_test)
+    acc = accuracy(preds, Y_test)
+
+    print("\n\n\nacc: ", acc, "\n\n\n")
+
+    accuracies.append(acc)
+
+    # loss, metrics = model.evaluate(G_test, Y_test)
+
+print("accs:", accuracies)
+print("mean acc: ", np.mean(accuracies))

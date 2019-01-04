@@ -23,9 +23,13 @@ StratifiedKFold:
 
 ## Next Steps
 
+- masking
 - convert to class
-- GCN-GC layer
-- add biases
-- regularisation?
-- dropout
-- activations?
+- investigate dropout
+
+
+## Further ahead
+
+- sparse
+- handle `A_` differently - does not need to be concated and split at every layer etc.
+
