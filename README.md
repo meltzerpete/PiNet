@@ -19,4 +19,6 @@ StratifiedKFold:
 
 ## Next Steps
 
+- func to split back to `A_` and `X`
+- convert to class
 - GCN-GC layer

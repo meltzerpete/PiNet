@@ -1,5 +1,3 @@
-from Models.GCN.GCN import GCN
-from Models.GCN.gcn_layer import GraphConvolution
 from Models.GCN.gcn_utils import *
 from ImportData import DropboxLoader as dl
 import networkx as nx
@@ -63,6 +61,7 @@ def get_G(A, X):
     return np.concatenate([A_, X], axis=2)
 
 
+# prepare data
 mutag = dl.DropboxLoader("MUTAG")
 A, X = get_A_X(mutag)
 G = get_G(A, X)
