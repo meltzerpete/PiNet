@@ -95,7 +95,7 @@ for j, (train_idx, val_idx) in enumerate(folds):
     # x1 = Dropout(0.5)(inputs)
     x1 = MyGCN(64, activation='relu')(inputs)
     # x1 = Dropout(0.5)(x1)
-    x1 = MyGCN(1, activation='sigmoid')(x1)
+    x1 = MyGCN(10, activation='sigmoid')(x1)
     x1 = Lambda(lambda G: G[:, :, G.shape[1]:])(x1)
     x1 = Permute((2, 1))(x1)
     # x1 = Dropout(0.5)(x1)
@@ -103,15 +103,18 @@ for j, (train_idx, val_idx) in enumerate(folds):
     # x2 = Dropout(0.5)(inputs)
     x2 = MyGCN(64, activation='relu')(inputs)
     # x2 = Dropout(0.5)(x2)
-    x2 = MyGCN(2, activation='relu')(x2)
+    x2 = MyGCN(10, activation='relu')(x2)
     x2 = Lambda(lambda G: G[:, :, G.shape[1]:])(x2)
     # x2 = Dropout(0.5)(x2)
 
     x3 = Dot(axes=(2, 1))([x1, x2])
-    x3 = Activation(activation='softmax', input_shape=(1, 2))(x3)
-    x3 = Reshape((2,))(x3)
+    x3 = Reshape((100,))(x3)
 
-    model = Model(inputs=inputs, outputs=x3)
+    x4 = Dense(2, activation='softmax')(x3)
+    # x3 = Activation(activation='softmax', input_shape=(1, 2))(x3)
+    # x3 = Reshape((2,))(x3)
+
+    model = Model(inputs=inputs, outputs=x4)
     model.compile(optimizer=Adam(), loss='categorical_crossentropy')
     # model.summary()
 
@@ -137,5 +140,6 @@ for j, (train_idx, val_idx) in enumerate(folds):
 
     # loss, metrics = model.evaluate(G_test, Y_test)
 
-print("accs:", accuracies)
 print("mean acc: ", np.mean(accuracies))
+print("std dev:", np.std(accuracies))
+print("accs:", accuracies)
