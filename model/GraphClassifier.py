@@ -11,8 +11,9 @@ from keras.layers import Input, Lambda, Dot, Permute, Activation, Reshape, Dense
 from keras.optimizers import Adam
 from keras.regularizers import l2
 from model.MyGCN import MyGCN
-from Models.GCN.gcn_utils import *
+from Models.GCN.gcn_utils import preprocess_adj, accuracy
 import keras
+import pickle
 
 
 def get_A_X(loader):
@@ -67,21 +68,25 @@ def get_G(A, X):
 
 # prepare data
 print("preparing data")
-mutag = dl.DropboxLoader("NCI1")
-A, X = get_A_X(mutag)
-G = get_G(A, X)
+mutag = dl.DropboxLoader("MUTAG")
+# A, X = get_A_X(mutag)
+# G = get_G(A, X)
+# pickle.dump(G, open("MUTAG.p", "wb"))
+
+G = pickle.load(open("MUTAG.p", "rb"))
 Y = mutag.get_graph_label()
 
 Y['graph_label'] = Y['graph_label'].apply(lambda x: 1 if x == 1 else 0)
 Y = np.array(Y)
 
-folds = list(StratifiedKFold(n_splits=10, shuffle=True, random_state=2).split(G, Y))
+folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(G, Y))
 
 accuracies = []
 for j, (train_idx, val_idx) in enumerate(folds):
     print("split :", j)
     G_train = G[train_idx]
     Y_train = to_categorical(Y)[train_idx]
+    print("Y_train shape:", Y_train.shape, "Num 1s: ", Y_train.sum(0))
     G_test = G[val_idx]
     Y_test = to_categorical(Y)[val_idx]
 
@@ -110,7 +115,19 @@ for j, (train_idx, val_idx) in enumerate(folds):
     model.compile(optimizer=Adam(), loss='categorical_crossentropy')
     # model.summary()
 
-    history = model.fit(G_train, Y_train, G_train.shape[0], epochs=200, verbose=1)
+    tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True, write_images=False)
+    # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
+    #                                                        factor=0.1,
+    #                                                        patience=3,
+    #                                                        verbose=1)
+
+    history = model.fit(G_train,
+                        Y_train,
+                        G_train.shape[0],
+                        epochs=200,
+                        verbose=0,
+                        # validation_split=0.2,
+                        callbacks=[tb_callback])
     preds = model.predict(G_test)
     acc = accuracy(preds, Y_test)
 
