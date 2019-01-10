@@ -66,7 +66,7 @@ def get_G(A, X):
     return np.concatenate([A_, X], axis=2)
 
 
-for dataset_name in ['NCI1']:
+for dataset_name in ['MUTAG']:
     # prepare data
     print("preparing data")
     dataset = dl.DropboxLoader(dataset_name)
@@ -116,11 +116,11 @@ for dataset_name in ['NCI1']:
         # x3 = Reshape((2,))(x3)
 
         model = Model(inputs=inputs, outputs=x4)
-        model.compile(optimizer=Adam(), loss='categorical_crossentropy')
+        model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
         # model.summary()
 
-        tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True,
-                                                  write_images=False)
+        tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + str(j), histogram_freq=0, write_grads=False,
+                                                  write_graph=True, write_images=False)
         # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
         #                                                        factor=0.1,
         #                                                        patience=3,
@@ -131,7 +131,7 @@ for dataset_name in ['NCI1']:
                             G_train.shape[0],
                             epochs=200,
                             verbose=0,
-                            # validation_split=0.2,
+                            validation_split=0.2,
                             callbacks=[tb_callback])
         preds = model.predict(G_test)
         acc = accuracy(preds, Y_test)
