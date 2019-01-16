@@ -13,7 +13,12 @@ from model.MyGCN import MyGCN
 import keras
 import pickle
 import time
+from csv import writer
 
+
+res_writer = writer(open('out.csv', 'w'), delimiter=';')
+
+res_writer.writerow(["dataset", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
 def get_A_X(loader):
     all_adj = loader.get_adj()
@@ -58,10 +63,10 @@ for dataset_name in ['MUTAG']:
     print("preparing data")
     dataset = dl.DropboxLoader(dataset_name)
 
-    A, X = get_A_X(dataset)
-    A_list = list(map(csr_matrix, A))
-    pickle.dump((A_list, X), open(dataset_name + ".p", "wb"))
-    # A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
+    # A, X = get_A_X(dataset)
+    # A_list = list(map(csr_matrix, A))
+    # pickle.dump((A_list, X), open(dataset_name + ".p", "wb"))
+    A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
 
     Y = dataset.get_graph_label()
 
@@ -89,7 +94,7 @@ for dataset_name in ['MUTAG']:
         # x1 = Dropout(0.5)(inputs)
         x1 = MyGCN(64, activation='relu')([A_in, X_in])
         # x1 = Dropout(0.5)(x1)
-        x1 = MyGCN(10, activation='sigmoid')([A_in, x1])
+        x1 = MyGCN(10, activation='softmax')([A_in, x1])
         # x1 = Dropout(0.5)(x1)
 
         # x2 = Dropout(0.5)(inputs)
@@ -158,8 +163,14 @@ for dataset_name in ['MUTAG']:
         accuracies.append(stats[1])
 
     print(dataset_name)
-    print("mean acc:", np.mean(accuracies))
-    print("std dev:", np.std(accuracies))
+    mean_acc = np.mean(accuracies)
+    print("mean acc:", mean_acc)
+    acc_std = np.std(accuracies)
+    print("std dev:", acc_std)
     print("accs:", accuracies)
-    print("mean train time", np.mean(times))
-    print("std dev:", np.std(times), end="\n\n")
+    mean_time = np.mean(times)
+    print("mean train time", mean_time)
+    time_std = np.std(times)
+    print("std dev:", time_std, end="\n\n")
+
+    res_writer.writerow([dataset_name, mean_acc, acc_std, mean_time, time_std, accuracies, times])
