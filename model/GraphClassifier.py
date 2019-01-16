@@ -117,7 +117,7 @@ for dataset_name in ['MUTAG']:
         #                                                        verbose=1)
 
         def batch_generator(A_X, y, batch_size):
-            number_of_batches = int(y.shape[0] / batch_size)
+            number_of_batches = ceil(y.shape[0] / batch_size)
             counter = 0
             shuffle_index = np.arange(np.shape(y)[0])
             np.random.shuffle(shuffle_index)
@@ -141,7 +141,7 @@ for dataset_name in ['MUTAG']:
         start = time.time()
         history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, 20),
                                       epochs=200,
-                                      steps_per_epoch=int(168 / 20),
+                                      steps_per_epoch=ceil(168 / 20),
                                       verbose=0)
 
         train_time = time.time() - start
