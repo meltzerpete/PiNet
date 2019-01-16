@@ -13,6 +13,7 @@ from keras.regularizers import l2
 from model.MyGCN import MyGCN
 from Models.GCN.gcn_utils import preprocess_adj, accuracy
 import keras
+import tensorflow as tf
 import pickle
 
 
@@ -66,11 +67,22 @@ def get_G(A, X):
     return np.concatenate([A_, X], axis=2)
 
 
+def convert_sparse_matrix_to_sparse_tensor(X):
+    coo = X.tocoo()
+    indices = np.mat([coo.row, coo.col]).transpose()
+    return tf.SparseTensor(indices, coo.data, coo.shape)
+
+
+# todo
+# l = list(map(lambda a: convert_sparse_matrix_to_sparse_tensor(csr_matrix(a)), A))
+
 for dataset_name in ['MUTAG']:
     # prepare data
     print("preparing data")
     dataset = dl.DropboxLoader(dataset_name)
-    # A, X = get_A_X(dataset)
+    A, X = get_A_X(dataset)
+    A_sparse = list(map(csr_matrix, A))
+    A_ = np.array(list(map(lambda a: preprocess_adj(a).todense(), A_sparse)))
     # G = get_G(A, X)
     # pickle.dump(G, open(dataset + ".p", "wb"))
 
@@ -86,36 +98,37 @@ for dataset_name in ['MUTAG']:
     for j, (train_idx, val_idx) in enumerate(folds):
         print("split :", j)
         G_train = G[train_idx]
+        A_train = A_[train_idx]
+        X_train = X[train_idx]
         Y_train = to_categorical(Y)[train_idx]
         print("Y_train shape:", Y_train.shape, "Num 1s: ", Y_train.sum(0))
         G_test = G[val_idx]
+        A_test = A_[val_idx]
+        X_test = X[val_idx]
         Y_test = to_categorical(Y)[val_idx]
 
-        inputs = Input(shape=(G.shape[1:]))
+        # inputs = Input(shape=(G.shape[1:]))
+        A_in = Input(A_.shape[1:], name='A_in')
+        X_in = Input(X.shape[1:], name='X_in')
 
         # x1 = Dropout(0.5)(inputs)
-        x1 = MyGCN(64, activation='relu')(inputs)
+        x1 = MyGCN(64, activation='relu')([A_in, X_in])
         # x1 = Dropout(0.5)(x1)
-        x1 = MyGCN(10, activation='sigmoid')(x1)
-        x1 = Lambda(lambda G: G[:, :, G.shape[1]:])(x1)
-        x1 = Permute((2, 1))(x1)
+        x1 = MyGCN(10, activation='sigmoid')([A_in, x1])
         # x1 = Dropout(0.5)(x1)
 
         # x2 = Dropout(0.5)(inputs)
-        x2 = MyGCN(64, activation='relu')(inputs)
+        x2 = MyGCN(64, activation='relu')([A_in, X_in])
         # x2 = Dropout(0.5)(x2)
-        x2 = MyGCN(10, activation='relu')(x2)
-        x2 = Lambda(lambda G: G[:, :, G.shape[1]:])(x2)
+        x2 = MyGCN(10, activation='relu')([A_in, x2])
         # x2 = Dropout(0.5)(x2)
 
-        x3 = Dot(axes=(2, 1))([x1, x2])
+        x3 = Dot(axes=[1, 1])([x1, x2])
         x3 = Reshape((100,))(x3)
 
         x4 = Dense(2, activation='softmax')(x3)
-        # x3 = Activation(activation='softmax', input_shape=(1, 2))(x3)
-        # x3 = Reshape((2,))(x3)
 
-        model = Model(inputs=inputs, outputs=x4)
+        model = Model(inputs=[A_in, X_in], outputs=x4)
         model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
         # model.summary()
 
@@ -126,14 +139,14 @@ for dataset_name in ['MUTAG']:
         #                                                        patience=3,
         #                                                        verbose=1)
 
-        history = model.fit(G_train,
+        history = model.fit([A_train, X_train],
                             Y_train,
-                            G_train.shape[0],
+                            # G_train.shape[0],
                             epochs=200,
                             verbose=0,
                             validation_split=0.2,
                             callbacks=[tb_callback])
-        preds = model.predict(G_test)
+        preds = model.predict([A_test, X_test])
         acc = accuracy(preds, Y_test)
 
         print("\n\n\nacc: ", acc, "\n\n\n")
