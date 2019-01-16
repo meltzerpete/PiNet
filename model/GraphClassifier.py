@@ -17,7 +17,8 @@ from csv import writer
 
 csv_file = open('out.csv', 'a')
 res_writer = writer(csv_file, delimiter=';')
-res_writer.writerow(["dataset", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
+res_writer.writerow(
+    ["dataset", "batch_size", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
 
 def get_A_X(loader):
@@ -52,10 +53,10 @@ def get_A_X(loader):
     padA = list(map(padA, A))
     padX = list(map(padX, X))
 
-    stackA = np.stack(padA)
-    stackX = np.stack(padX)
+    # stackA = np.stack(padA)
+    # stackX = np.stack(padX)
 
-    return stackA, stackX
+    return padA, padX
 
 
 for dataset_name in ['MUTAG']:
@@ -63,10 +64,10 @@ for dataset_name in ['MUTAG']:
     print("preparing data")
     dataset = dl.DropboxLoader(dataset_name)
 
-    # A, X = get_A_X(dataset)
-    # A_list = list(map(csr_matrix, A))
+    A, X = get_A_X(dataset)
+    A_list = list(map(csr_matrix, A))
     # pickle.dump((A_list, X), open(dataset_name + ".p", "wb"))
-    A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
+    # A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
 
     Y = dataset.get_graph_label()
 
@@ -75,21 +76,25 @@ for dataset_name in ['MUTAG']:
 
     folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 
+    batch_size = 50
+
     accuracies = []
     times = []
     for j, (train_idx, val_idx) in enumerate(folds):
         print("split :", j)
 
         A_train = np.array([A_list[i] for i in train_idx])
-        X_train = X[train_idx]
+        X_train = np.array([X[i] for i in train_idx])
+        # X_train = X[train_idx]
         Y_train = to_categorical(Y)[train_idx]
 
         A_test = np.array([A_list[i] for i in val_idx])
-        X_test = X[val_idx]
+        X_test = np.array([X[i] for i in val_idx])
+        # X_test = X[val_idx]
         Y_test = to_categorical(Y)[val_idx]
 
-        A_in = Input((X.shape[1], X.shape[1]), name='A_in')
-        X_in = Input(X.shape[1:], name='X_in')
+        A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
+        X_in = Input(X[0].shape, name='X_in')
 
         # x1 = Dropout(0.5)(inputs)
         x1 = MyGCN(64, activation='relu')([A_in, X_in])
@@ -112,9 +117,9 @@ for dataset_name in ['MUTAG']:
         model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
         # model.summary()
 
-        tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j), histogram_freq=0,
-                                                  write_grads=False,
-                                                  write_graph=True, write_images=False)
+        # tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j), histogram_freq=0,
+        #                                           write_grads=False,
+        #                                           write_graph=True, write_images=False)
 
 
         # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
@@ -144,20 +149,20 @@ for dataset_name in ['MUTAG']:
                     counter = 0
 
 
-        steps = ceil(Y_test.shape[0] / 20)
+        steps = ceil(Y_test.shape[0] / batch_size)
 
         start = time.time()
-        history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, 20),
+        history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
                                       epochs=200,
                                       steps_per_epoch=steps,
-                                      verbose=0)
+                                      verbose=1)
 
         train_time = time.time() - start
 
         print("train time: ", train_time)
         times.append(train_time)
 
-        stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, 20), steps=steps)
+        stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size), steps=steps)
 
         for metric, val in zip(model.metrics_names, stats):
             print(metric + ": ", val)
@@ -175,7 +180,7 @@ for dataset_name in ['MUTAG']:
     time_std = np.std(times)
     print("std dev:", time_std, end="\n\n")
 
-    res_writer.writerow([dataset_name, mean_acc, acc_std, mean_time, time_std, accuracies, times])
+    res_writer.writerow([dataset_name, batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
     csv_file.flush()
 
 csv_file.close()
