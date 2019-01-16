@@ -1,4 +1,5 @@
 from keras.models import Model
+from math import ceil
 from keras import backend as K
 from keras.utils import to_categorical
 from ImportData import DropboxLoader as dl
@@ -15,6 +16,7 @@ from Models.GCN.gcn_utils import preprocess_adj, accuracy
 import keras
 import tensorflow as tf
 import pickle
+import time
 
 
 def get_A_X(loader):
@@ -67,48 +69,43 @@ def get_G(A, X):
     return np.concatenate([A_, X], axis=2)
 
 
-def convert_sparse_matrix_to_sparse_tensor(X):
-    coo = X.tocoo()
-    indices = np.mat([coo.row, coo.col]).transpose()
-    return tf.SparseTensor(indices, coo.data, coo.shape)
-
-
-# todo
-# l = list(map(lambda a: convert_sparse_matrix_to_sparse_tensor(csr_matrix(a)), A))
-
 for dataset_name in ['MUTAG']:
     # prepare data
     print("preparing data")
     dataset = dl.DropboxLoader(dataset_name)
     A, X = get_A_X(dataset)
-    A_sparse = list(map(csr_matrix, A))
-    A_ = np.array(list(map(lambda a: preprocess_adj(a).todense(), A_sparse)))
+    # A_sparse = list(map(csr_matrix, A))
+    # A_ = np.array(list(map(lambda a: preprocess_adj(a).todense(), A_sparse)))
+    A_list = list(map(lambda a: csr_matrix(a), A))
+
     # G = get_G(A, X)
     # pickle.dump(G, open(dataset + ".p", "wb"))
 
-    G = pickle.load(open(dataset_name + ".p", "rb"))
+    # G = pickle.load(open(dataset_name + ".p", "rb"))
     Y = dataset.get_graph_label()
 
     Y['graph_label'] = Y['graph_label'].apply(lambda x: 1 if x == 1 else 0)
     Y = np.array(Y)
 
-    folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(G, Y))
+    folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 
     accuracies = []
+    times = []
     for j, (train_idx, val_idx) in enumerate(folds):
         print("split :", j)
-        G_train = G[train_idx]
-        A_train = A_[train_idx]
+
+        # A_train = A_[train_idx]
+        A_train = np.array([A_list[i] for i in train_idx])
         X_train = X[train_idx]
         Y_train = to_categorical(Y)[train_idx]
-        print("Y_train shape:", Y_train.shape, "Num 1s: ", Y_train.sum(0))
-        G_test = G[val_idx]
-        A_test = A_[val_idx]
+
+        # A_test = A_[val_idx]
+        A_test = np.array([A_list[i] for i in val_idx])
         X_test = X[val_idx]
         Y_test = to_categorical(Y)[val_idx]
 
         # inputs = Input(shape=(G.shape[1:]))
-        A_in = Input(A_.shape[1:], name='A_in')
+        A_in = Input((X.shape[1], X.shape[1]), name='A_in')
         X_in = Input(X.shape[1:], name='X_in')
 
         # x1 = Dropout(0.5)(inputs)
@@ -134,28 +131,79 @@ for dataset_name in ['MUTAG']:
 
         tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + str(j), histogram_freq=0, write_grads=False,
                                                   write_graph=True, write_images=False)
+
+
         # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
         #                                                        factor=0.1,
         #                                                        patience=3,
         #                                                        verbose=1)
 
-        history = model.fit([A_train, X_train],
-                            Y_train,
-                            # G_train.shape[0],
+        def batch_generator(A_X, y, batch_size):
+            number_of_batches = int(y.shape[0] / batch_size)
+            counter = 0
+            shuffle_index = np.arange(np.shape(y)[0])
+            np.random.shuffle(shuffle_index)
+            A_ = A_X[0]
+            X = A_X[1]
+            A_ = A_[shuffle_index]
+            X = X[shuffle_index]
+            y = y[shuffle_index]
+            while 1:
+                index_batch = shuffle_index[batch_size * counter:min(batch_size * (counter + 1), y.shape[0])]
+                A_batch = np.array(list(map(lambda a: csr_matrix.todense(a), A_[index_batch].tolist())))
+                X_batch = X[index_batch]
+                y_batch = y[index_batch]
+                counter += 1
+                yield ([A_batch, X_batch], y_batch)
+                if (counter < number_of_batches):
+                    np.random.shuffle(shuffle_index)
+                    counter = 0
+
+
+        start = time.time()
+        model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, 20),
                             epochs=200,
-                            verbose=0,
-                            validation_split=0.2,
-                            callbacks=[tb_callback])
-        preds = model.predict([A_test, X_test])
-        acc = accuracy(preds, Y_test)
+                            steps_per_epoch=int(168 / 20),
+                            # workers=8,
+                            # use_multiprocessing=True,
+                            verbose=0)
 
-        print("\n\n\nacc: ", acc, "\n\n\n")
+        # history = model.fit([A_train, X_train],
+        #                     Y_train,
+        #                     A_train.shape[0],
+        #                     epochs=200,
+        #                     verbose=0,
+        #                     validation_split=0.2,
+        #                     callbacks=[tb_callback])
+        train_time = time.time() - start
 
-        accuracies.append(acc)
+        print("train time: ", train_time)
+        times.append(train_time)
+
+        # preds = model.predict_generator(generator=batch_generator([A_test, X_test], Y_test, 20),
+        #                                 steps=int(Y_test.shape[0] / 20),
+        #                                 verbose=1)
+
+        # preds = model.predict([A_test, X_test])
+
+        steps = ceil(Y_test.shape[0] / 20)
+        stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, 20), steps=steps)
+
+        for metric, val in zip(model.metrics_names, stats):
+            print(metric + ": ", val)
+
+        # acc = accuracy(preds, Y_test)
+
+        print("\n\n\nacc: ", stats[1], "\n\n\n")
+        accuracies.append(stats[1])
 
         # loss, metrics = model.evaluate(G_test, Y_test)
 
     print(dataset_name)
-    print("mean acc: ", np.mean(accuracies))
+    print("mean acc:", np.mean(accuracies))
     print("std dev:", np.std(accuracies))
+    print("accs:", accuracies)
+
+    print("mean train time", np.mean(times))
+    print("std dev:", np.std(times))
     print("accs:", accuracies)
