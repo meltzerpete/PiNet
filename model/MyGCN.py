@@ -1,7 +1,6 @@
 from keras import backend as K
 from keras import activations, initializers, regularizers
 from keras.engine.topology import Layer
-import tensorflow as tf
 
 
 class MyGCN(Layer):
