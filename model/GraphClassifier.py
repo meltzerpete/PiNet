@@ -15,10 +15,10 @@ import pickle
 import time
 from csv import writer
 
-
-res_writer = writer(open('out.csv', 'w'), delimiter=';')
-
+csv_file = open('out.csv', 'a')
+res_writer = writer(csv_file, delimiter=';')
 res_writer.writerow(["dataset", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
+
 
 def get_A_X(loader):
     all_adj = loader.get_adj()
@@ -112,7 +112,8 @@ for dataset_name in ['MUTAG']:
         model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
         # model.summary()
 
-        tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + str(j), histogram_freq=0, write_grads=False,
+        tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j), histogram_freq=0,
+                                                  write_grads=False,
                                                   write_graph=True, write_images=False)
 
 
@@ -143,10 +144,12 @@ for dataset_name in ['MUTAG']:
                     counter = 0
 
 
+        steps = ceil(Y_test.shape[0] / 20)
+
         start = time.time()
         history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, 20),
                                       epochs=200,
-                                      steps_per_epoch=ceil(168 / 20),
+                                      steps_per_epoch=steps,
                                       verbose=0)
 
         train_time = time.time() - start
@@ -154,7 +157,6 @@ for dataset_name in ['MUTAG']:
         print("train time: ", train_time)
         times.append(train_time)
 
-        steps = ceil(Y_test.shape[0] / 20)
         stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, 20), steps=steps)
 
         for metric, val in zip(model.metrics_names, stats):
@@ -174,3 +176,6 @@ for dataset_name in ['MUTAG']:
     print("std dev:", time_std, end="\n\n")
 
     res_writer.writerow([dataset_name, mean_acc, acc_std, mean_time, time_std, accuracies, times])
+    csv_file.flush()
+
+csv_file.close()
