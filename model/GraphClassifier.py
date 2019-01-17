@@ -59,15 +59,16 @@ def get_A_X(loader):
     return padA, padX
 
 
-for dataset_name in ['MUTAG']:
+# for dataset_name in ['PTC_MM', 'PTC_FM', 'PTC_MR', 'PTC_FR']:
+for dataset_name in ['DD']:
     # prepare data
     print("preparing data")
     dataset = dl.DropboxLoader(dataset_name)
 
-    A, X = get_A_X(dataset)
-    A_list = list(map(csr_matrix, A))
+    # A, X = get_A_X(dataset)
+    # A_list = list(map(csr_matrix, A))
     # pickle.dump((A_list, X), open(dataset_name + ".p", "wb"))
-    # A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
+    A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
 
     Y = dataset.get_graph_label()
 
@@ -76,7 +77,7 @@ for dataset_name in ['MUTAG']:
 
     folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 
-    batch_size = 50
+    batch_size = 1
 
     accuracies = []
     times = []
@@ -115,12 +116,13 @@ for dataset_name in ['MUTAG']:
 
         model = Model(inputs=[A_in, X_in], outputs=x4)
         model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+
         # model.summary()
 
         # tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j), histogram_freq=0,
         #                                           write_grads=False,
         #                                           write_graph=True, write_images=False)
-
 
         # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
         #                                                        factor=0.1,
