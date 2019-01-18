@@ -17,7 +17,7 @@ soa.columns = ['dataset', 'soa_acc']
 soa = soa.sort_values('dataset').reset_index(drop=True)
 soa['color'] = soa.index.map(lambda x: 'C' + str(x))
 
-df = pd.read_csv('softmax-results.csv', sep=';')
+df = pd.read_csv('withA_.csv', sep=';')
 ptc = df.loc[df.dataset.str.contains('PTC')].groupby('batch_size').mean().reset_index()
 ptc['dataset'] = 'PTC'
 
@@ -37,7 +37,7 @@ plt.plot(x_pos, df['soa_acc'] / 100, "r.")
 plt.title("Mean Classification Accuracy")
 plt.tight_layout()
 
-plt.savefig('softmax-results-accuracy.pdf')
+plt.savefig('withA_-accuracy.pdf')
 plt.show()
 
 plt.subplot()
@@ -49,7 +49,7 @@ plt.yscale('log')
 plt.title("Mean Training Time (s)")
 plt.tight_layout()
 
-plt.savefig('softmax-results-time.pdf')
+plt.savefig('withA_-time.pdf')
 plt.show()
 
 df = df.drop(columns=['all_accs', 'all_times', 'color'])

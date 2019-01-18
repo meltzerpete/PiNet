@@ -14,6 +14,16 @@ import keras
 import pickle
 import time
 from csv import writer
+import os
+
+
+def preprocess(A):
+    np.fill_diagonal(A, 1)
+    A_hat = A
+    D_hat = np.diag(1 / np.sqrt(np.sum(A, axis=1)))
+    A_ = np.dot(A_hat, D_hat).dot(A_hat)
+    return A_
+
 
 with open('out.csv', 'a') as csv_file:
     res_writer = writer(csv_file, delimiter=';')
@@ -59,17 +69,19 @@ with open('out.csv', 'a') as csv_file:
         return padA, padX
 
 
-    # for dataset_name in ['PTC_MM', 'PTC_FM', 'PTC_MR', 'PTC_FR']:
     for dataset_name in ['PROTEINS']:
+    # for dataset_name in ['PTC_MM', 'PTC_FM', 'PTC_MR', 'PTC_FR']:
         for batch_size in [20, 50, 100]:
             # prepare data
             print("preparing data")
             dataset = dl.DropboxLoader(dataset_name)
 
-            A, X = get_A_X(dataset)
-            A_list = list(map(csr_matrix, A))
-            pickle.dump((A_list, X), open(dataset_name + ".p", "wb"))
-            # A_list, X = pickle.load(open(dataset_name + ".p", "rb"))
+            if os.path.isfile(dataset_name + "_.p"):
+                A_list, X = pickle.load(open(dataset_name + "_.p", "rb"))
+            else:
+                A, X = get_A_X(dataset)
+                A_list = list(map(csr_matrix, map(preprocess, A)))
+                pickle.dump((A_list, X), open(dataset_name + "_.p", "wb"))
 
             Y = dataset.get_graph_label()
 
@@ -116,12 +128,13 @@ with open('out.csv', 'a') as csv_file:
                 model = Model(inputs=[A_in, X_in], outputs=x4)
                 model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 
-
                 # model.summary()
 
-                # tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j), histogram_freq=0,
-                #                                           write_grads=False,
-                #                                           write_graph=True, write_images=False)
+                tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j),
+                                                          histogram_freq=0,
+                                                          write_grads=False,
+                                                          write_graph=True, write_images=False)
+
 
                 # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
                 #                                                        factor=0.1,
@@ -156,6 +169,7 @@ with open('out.csv', 'a') as csv_file:
                 history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
                                               epochs=200,
                                               steps_per_epoch=steps,
+                                              # callbacks=[tb_callback],
                                               verbose=1)
 
                 train_time = time.time() - start
@@ -163,7 +177,8 @@ with open('out.csv', 'a') as csv_file:
                 print("train time: ", train_time)
                 times.append(train_time)
 
-                stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size), steps=steps)
+                stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size),
+                                                 steps=steps)
 
                 for metric, val in zip(model.metrics_names, stats):
                     print(metric + ": ", val)
