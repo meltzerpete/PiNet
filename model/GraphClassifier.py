@@ -48,7 +48,12 @@ with open('out.csv', 'a') as csv_file:
             return A, X
 
         A, X = zip(*[get_A_X_by_graph_id(id) for id in range(1, numGraphs + 1)])
-        maxNodes = max(map(lambda a: a.shape[0], A))
+        num_nodes_list = list(map(lambda a: a.shape[0], A))
+        maxNodes = max(num_nodes_list)
+
+        def normaliseX_by_num_nodes(x_num_nodes):
+            x, num_nodes = x_num_nodes
+            return np.divide(x, num_nodes)
 
         def padA(a):
             padA = np.zeros([maxNodes, maxNodes])
@@ -61,27 +66,26 @@ with open('out.csv', 'a') as csv_file:
             return padX
 
         padA = list(map(padA, A))
-        padX = list(map(padX, X))
-
-        # stackA = np.stack(padA)
-        # stackX = np.stack(padX)
+        padX = list(map(padX, map(normaliseX_by_num_nodes, zip(X, num_nodes_list))))
 
         return padA, padX
 
 
-    for dataset_name in ['PROTEINS']:
+    for dataset_name in ['MUTAG']:
+    # for dataset_name in ['NCI1', 'NCI109']:
     # for dataset_name in ['PTC_MM', 'PTC_FM', 'PTC_MR', 'PTC_FR']:
-        for batch_size in [20, 50, 100]:
+        for batch_size in [50]:
             # prepare data
             print("preparing data")
             dataset = dl.DropboxLoader(dataset_name)
 
-            if os.path.isfile(dataset_name + "_.p"):
-                A_list, X = pickle.load(open(dataset_name + "_.p", "rb"))
+            file_name_ext = "_normalise.p"
+            if os.path.isfile(dataset_name + file_name_ext):
+                A_list, X = pickle.load(open(dataset_name + file_name_ext, "rb"))
             else:
                 A, X = get_A_X(dataset)
                 A_list = list(map(csr_matrix, map(preprocess, A)))
-                pickle.dump((A_list, X), open(dataset_name + "_.p", "wb"))
+                pickle.dump((A_list, X), open(dataset_name + file_name_ext, "wb"))
 
             Y = dataset.get_graph_label()
 
@@ -109,19 +113,19 @@ with open('out.csv', 'a') as csv_file:
                 X_in = Input(X[0].shape, name='X_in')
 
                 # x1 = Dropout(0.5)(inputs)
-                x1 = MyGCN(64, activation='relu')([A_in, X_in])
+                x1 = MyGCN(100, activation='relu')([A_in, X_in])
                 # x1 = Dropout(0.5)(x1)
-                x1 = MyGCN(10, activation='softmax')([A_in, x1])
+                x1 = MyGCN(64, activation='softmax')([A_in, x1])
                 # x1 = Dropout(0.5)(x1)
 
                 # x2 = Dropout(0.5)(inputs)
-                x2 = MyGCN(64, activation='relu')([A_in, X_in])
+                x2 = MyGCN(100, activation='relu')([A_in, X_in])
                 # x2 = Dropout(0.5)(x2)
-                x2 = MyGCN(10, activation='relu')([A_in, x2])
+                x2 = MyGCN(64, activation='relu')([A_in, x2])
                 # x2 = Dropout(0.5)(x2)
 
                 x3 = Dot(axes=[1, 1])([x1, x2])
-                x3 = Reshape((100,))(x3)
+                x3 = Reshape((64**2,))(x3)
 
                 x4 = Dense(2, activation='softmax')(x3)
 
