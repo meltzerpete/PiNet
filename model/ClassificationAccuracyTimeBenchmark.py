@@ -79,166 +79,182 @@ def get_data(dropbox_name, file_name_ext):
     return A_list, X, Y
 
 
-with open('out.csv', 'a') as csv_file:
-    res_writer = writer(csv_file, delimiter=';')
-    res_writer.writerow(
-        ["dataset", "batch_size", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
+def main():
+    with open('out.csv', 'a') as csv_file:
+        res_writer = writer(csv_file, delimiter=';')
+        res_writer.writerow(
+            ["dataset", "batch_size", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
-    datasets = {
-        'ENZYMES': {
-            'preprocess_graph_labels': lambda x: x - 1,
-            'classes': 6,
-        },
-        'MUTAG': {
+        datasets = {
+            'ENZYMES': {
+                'preprocess_graph_labels': lambda x: x - 1,
+                'classes': 6,
+            },
+            'MUTAG': {
 
-        },
-        'NCI1': {
-            'pretty_name': 'NCI-1',
-        },
-        'NCI109': {
-            'pretty_name': 'NCI-109',
-        },
-        'PTC_MM': {
-            'pretty_name': 'PTC-MM',
-        },
-        'PTC_FM': {
-            'pretty_name': 'PTC-FM',
-        },
-        'PTC_MR': {
-            'pretty_name': 'PTC-MR',
-        },
-        'PTC_FR': {
-            'pretty_name': 'PTC-FR',
-        },
-    }
+            },
+            'NCI1': {
+                'pretty_name': 'NCI-1',
+            },
+            'NCI109': {
+                'pretty_name': 'NCI-109',
+            },
+            'PTC_MM': {
+                'pretty_name': 'PTC-MM',
+            },
+            'PTC_FM': {
+                'pretty_name': 'PTC-FM',
+            },
+            'PTC_MR': {
+                'pretty_name': 'PTC-MR',
+            },
+            'PTC_FR': {
+                'pretty_name': 'PTC-FR',
+            },
+        }
 
-    batch_sizes = [50]
-    file_name_ext = "_normalise.p"
+        batch_sizes = [50]
+        file_name_ext = "_normalise.p"
 
-    out_dim_a2 = 64
-    out_dim_x2 = 64
+        out_dim_a2 = 64
+        out_dim_x2 = 64
 
-    for dataset_name, dataset in datasets.items():
+        for dataset_name, dataset in datasets.items():
 
-        print("Dataset: ", dataset_name)
+            print("Dataset: ", dataset_name)
 
-        dropbox_name = dataset['dropbox_name'] \
-            if 'dropbox_name' in dataset.keys() else dataset_name
+            dropbox_name = dataset['dropbox_name'] \
+                if 'dropbox_name' in dataset.keys() else dataset_name
 
-        preprocess_graph_labels = dataset['preprocess_graph_labels'] \
-            if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
+            preprocess_graph_labels = dataset['preprocess_graph_labels'] \
+                if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
 
-        classes = dataset['classes'] \
-            if 'classes' in dataset.keys() else 2
+            classes = dataset['classes'] \
+                if 'classes' in dataset.keys() else 2
 
-        for batch_size in batch_sizes:
-            # prepare data
-            print("preparing data")
+            for batch_size in batch_sizes:
+                # prepare data
+                print("preparing data")
 
-            A_list, X, Y = get_data(dropbox_name, file_name_ext)
+                A_list, X, Y = get_data(dropbox_name, file_name_ext)
 
-            Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
-            Y = np.array(Y)
+                Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
+                Y = np.array(Y)
 
-            folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
+                folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 
-            accuracies = []
-            times = []
-            for j, (train_idx, val_idx) in enumerate(folds):
-                print("split :", j)
+                accuracies = []
+                times = []
+                for j, (train_idx, val_idx) in enumerate(folds):
+                    print("split :", j)
 
-                A_train = np.array([A_list[i] for i in train_idx])
-                X_train = np.array([X[i] for i in train_idx])
-                Y_train = to_categorical(Y)[train_idx]
+                    A_test, A_train, X_test, X_train, Y_test, Y_train \
+                        = split_test_train(A_list, X, Y, train_idx, val_idx)
 
-                A_test = np.array([A_list[i] for i in val_idx])
-                X_test = np.array([X[i] for i in val_idx])
-                Y_test = to_categorical(Y)[val_idx]
+                    model = define_model(X, classes, out_dim_a2, out_dim_x2)
 
-                A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
-                X_in = Input(X[0].shape, name='X_in')
+                    model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 
-                x1 = MyGCN(100, activation='relu')([A_in, X_in])
-                x1 = MyGCN(out_dim_a2, activation='softmax')([A_in, x1])
+                    model.summary()
 
-                x2 = MyGCN(100, activation='relu')([A_in, X_in])
-                x2 = MyGCN(out_dim_x2, activation='relu')([A_in, x2])
+                    tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dropbox_name + '/' + str(j),
+                                                              histogram_freq=0,
+                                                              write_grads=False,
+                                                              write_graph=True, write_images=False)
 
-                x3 = Dot(axes=[1, 1])([x1, x2])
-                x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)
+                    reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
+                                                                           factor=0.1,
+                                                                           patience=3,
+                                                                           verbose=1)
 
-                x4 = Dense(classes, activation='softmax')(x3)
+                    steps = ceil(Y_test.shape[0] / batch_size)
 
-                model = Model(inputs=[A_in, X_in], outputs=x4)
-                model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+                    start = time.time()
+                    history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
+                                                  epochs=200,
+                                                  steps_per_epoch=steps,
+                                                  # callbacks=[tb_callback],
+                                                  verbose=1)
 
-                model.summary()
+                    train_time = time.time() - start
 
-                tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dropbox_name + '/' + str(j),
-                                                          histogram_freq=0,
-                                                          write_grads=False,
-                                                          write_graph=True, write_images=False)
+                    print("train time: ", train_time)
+                    times.append(train_time)
 
+                    stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size),
+                                                     steps=steps)
 
-                # reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
-                #                                                        factor=0.1,
-                #                                                        patience=3,
-                #                                                        verbose=1)
+                    for metric, val in zip(model.metrics_names, stats):
+                        print(metric + ": ", val)
 
-                def batch_generator(A_X, y, batch_size):
-                    number_of_batches = ceil(y.shape[0] / batch_size)
-                    counter = 0
-                    shuffle_index = np.arange(np.shape(y)[0])
-                    np.random.shuffle(shuffle_index)
-                    A_ = A_X[0]
-                    X = A_X[1]
-                    A_ = A_[shuffle_index]
-                    X = X[shuffle_index]
-                    y = y[shuffle_index]
-                    while 1:
-                        index_batch = shuffle_index[batch_size * counter:min(batch_size * (counter + 1), y.shape[0])]
-                        A_batch = np.array(list(map(lambda a: csr_matrix.todense(a), A_[index_batch].tolist())))
-                        X_batch = X[index_batch]
-                        y_batch = y[index_batch]
-                        counter += 1
-                        yield ([A_batch, X_batch], y_batch)
-                        if (counter < number_of_batches):
-                            np.random.shuffle(shuffle_index)
-                            counter = 0
+                    accuracies.append(stats[1])
+
+                print(dropbox_name)
+                mean_acc = np.mean(accuracies)
+                print("mean acc:", mean_acc)
+                acc_std = np.std(accuracies)
+                print("std dev:", acc_std)
+                print("accs:", accuracies)
+                mean_time = np.mean(times)
+                print("mean train time", mean_time)
+                time_std = np.std(times)
+                print("std dev:", time_std, end="\n\n")
+
+                res_writer.writerow(
+                    [dropbox_name, batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
+                csv_file.flush()
 
 
-                steps = ceil(Y_test.shape[0] / batch_size)
+def define_model(X, classes, out_dim_a2, out_dim_x2):
+    A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
+    X_in = Input(X[0].shape, name='X_in')
 
-                start = time.time()
-                history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
-                                              epochs=200,
-                                              steps_per_epoch=steps,
-                                              # callbacks=[tb_callback],
-                                              verbose=1)
+    x1 = MyGCN(100, activation='relu')([A_in, X_in])
+    x1 = MyGCN(out_dim_a2, activation='softmax')([A_in, x1])
 
-                train_time = time.time() - start
+    x2 = MyGCN(100, activation='relu')([A_in, X_in])
+    x2 = MyGCN(out_dim_x2, activation='relu')([A_in, x2])
 
-                print("train time: ", train_time)
-                times.append(train_time)
+    x3 = Dot(axes=[1, 1])([x1, x2])
+    x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)
+    x4 = Dense(classes, activation='softmax')(x3)
 
-                stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size),
-                                                 steps=steps)
+    return Model(inputs=[A_in, X_in], outputs=x4)
 
-                for metric, val in zip(model.metrics_names, stats):
-                    print(metric + ": ", val)
 
-                accuracies.append(stats[1])
+def split_test_train(A_list, X, Y, train_idx, val_idx):
+    A_test = np.array([A_list[i] for i in val_idx])
+    A_train = np.array([A_list[i] for i in train_idx])
 
-            print(dropbox_name)
-            mean_acc = np.mean(accuracies)
-            print("mean acc:", mean_acc)
-            acc_std = np.std(accuracies)
-            print("std dev:", acc_std)
-            print("accs:", accuracies)
-            mean_time = np.mean(times)
-            print("mean train time", mean_time)
-            time_std = np.std(times)
-            print("std dev:", time_std, end="\n\n")
+    X_test = np.array([X[i] for i in val_idx])
+    X_train = np.array([X[i] for i in train_idx])
 
-            res_writer.writerow([dropbox_name, batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
-            csv_file.flush()
+    Y_test = to_categorical(Y)[val_idx]
+    Y_train = to_categorical(Y)[train_idx]
+
+    return A_test, A_train, X_test, X_train, Y_test, Y_train
+
+
+def batch_generator(A_X, y, batch_size):
+    number_of_batches = ceil(y.shape[0] / batch_size)
+    counter = 0
+    shuffle_index = np.arange(np.shape(y)[0])
+    np.random.shuffle(shuffle_index)
+    A_ = A_X[0]
+    X = A_X[1]
+    A_ = A_[shuffle_index]
+    X = X[shuffle_index]
+    y = y[shuffle_index]
+    while 1:
+        index_batch = shuffle_index[
+                      batch_size * counter:min(batch_size * (counter + 1), y.shape[0])]
+        A_batch = np.array(list(map(lambda a: csr_matrix.todense(a), A_[index_batch].tolist())))
+        X_batch = X[index_batch]
+        y_batch = y[index_batch]
+        counter += 1
+        yield ([A_batch, X_batch], y_batch)
+        if (counter < number_of_batches):
+            np.random.shuffle(shuffle_index)
+            counter = 0
+
+main()
