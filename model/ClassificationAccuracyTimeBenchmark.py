@@ -76,7 +76,7 @@ def get_A_X(loader, normalise_by_num_nodes=True):
         return padX
 
     padA = list(map(padA, A))
-    if normailse_by_num_nodes:
+    if normalise_by_num_nodes:
         X = map(normaliseX_by_num_nodes, X)
 
     padX = list(map(padX, X))
@@ -84,10 +84,10 @@ def get_A_X(loader, normalise_by_num_nodes=True):
     return padA, padX
 
 
-def get_data(dropbox_name, file_name_ext, preprocessA, normalise_by_num_nodes=False):
+def get_data(dropbox_name, preprocessA, normalise_by_num_nodes=False):
     dataset = DropboxLoader(dropbox_name)
 
-    file_path = f'{dropbox_name}_{preprocessA}_{normalise_by_num_nodes}_{file_name_ext}'
+    file_path = f'{dropbox_name}_{preprocessA}_{normalise_by_num_nodes}.p'
 
     if os.path.isfile(file_path):
         A_list, X = pickle.load(open(file_path, "rb"))
@@ -218,54 +218,60 @@ def main():
     with open('out.csv', 'a') as csv_file:
         res_writer = writer(csv_file, delimiter=';')
         res_writer.writerow(
-            ["dataset", "preprocessA", "normalise_by_num_nodes", "batch_size", "mean_acc", "acc_std",
+            ["dataset", "pretty_name", "preprocessA", "normalise_by_num_nodes", "batch_size", "mean_acc", "acc_std",
              "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
-        datasets = {
-            # 'ENZYMES': {
-            #     'preprocess_graph_labels': lambda x: x - 1,
-            #     'classes': 6,
-            # },
-            # 'MUTAG': {
-            #
-            # },
-            'NCI1': {
-                'pretty_name': 'NCI-1',
-            },
-            # 'NCI109': {
-            #     'pretty_name': 'NCI-109',
-            # },
-            # 'PTC_MM': {
-            #     'pretty_name': 'PTC-MM',
-            # },
-            # 'PTC_FM': {
-            #     'pretty_name': 'PTC-FM',
-            # },
-            # 'PTC_MR': {
-            #     'pretty_name': 'PTC-MR',
-            # },
-            # 'PTC_FR': {
-            #     'pretty_name': 'PTC-FR',
-            # },
-        }
+        if 'DD' in os.environ.keys():
+            datasets = {
+                'DD': {
+                    'pretty_name': 'D & D'
+                },
+            }
+            batch_sizes = [1]
+
+        else:
+            datasets = {
+                'ENZYMES': {
+                    'preprocess_graph_labels': lambda x: x - 1,
+                    'classes': 6,
+                },
+                'MUTAG': {},
+                'NCI1': {
+                    'pretty_name': 'NCI-1',
+                },
+                'NCI109': {
+                    'pretty_name': 'NCI-109',
+                },
+                'PTC_MM': {
+                    'pretty_name': 'PTC-MM',
+                },
+                'PTC_FM': {
+                    'pretty_name': 'PTC-FM',
+                },
+                'PTC_MR': {
+                    'pretty_name': 'PTC-MR',
+                },
+                'PTC_FR': {
+                    'pretty_name': 'PTC-FR',
+                },
+            }
+            batch_sizes = [50]
+
+        out_dim_a2 = 64
+        out_dim_x2 = 64
 
         for preprocessA in [[], ['add_self_loops'], ['add_self_loops', 'sym_normalise_A'],
                             ['sym_normalise_A'], ['laplacian'], ['sym_norm_laplacian']]:
-
             for normalise_by_num_nodes in [True, False]:
-
-                batch_sizes = [50]
-                file_name_ext = "normalise.p"
-
-                out_dim_a2 = 64
-                out_dim_x2 = 64
-
                 for dataset_name, dataset in datasets.items():
 
                     print("Dataset: ", dataset_name)
 
                     dropbox_name = dataset['dropbox_name'] \
                         if 'dropbox_name' in dataset.keys() else dataset_name
+
+                    pretty_name = dataset['pretty_name'] \
+                        if 'pretty_name' in dataset.keys() else dataset_name
 
                     preprocess_graph_labels = dataset['preprocess_graph_labels'] \
                         if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
@@ -277,7 +283,7 @@ def main():
                         # prepare data
                         print("preparing data")
 
-                        A_list, X, Y = get_data(dropbox_name, file_name_ext, preprocessA, normalise_by_num_nodes)
+                        A_list, X, Y = get_data(dropbox_name, preprocessA, normalise_by_num_nodes)
 
                         Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
                         Y = np.array(Y)
@@ -299,9 +305,9 @@ def main():
                         print("std dev:", time_std, end="\n\n")
 
                         res_writer.writerow(
-                            [dropbox_name, preprocessA, normalise_by_num_nodes, batch_size, mean_acc, acc_std,
-                             mean_time,
-                             time_std, accuracies, times])
+                            [dropbox_name, pretty_name, preprocessA, normalise_by_num_nodes,
+                             batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
+
                         csv_file.flush()
 
 
