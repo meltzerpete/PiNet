@@ -17,12 +17,24 @@ from csv import writer
 import os
 
 
-def preprocess(A):
+def add_self_loops(A):
     np.fill_diagonal(A, 1)
+    return A
+
+def sym_normalise_A(A):
     A_hat = A
     D_hat = np.diag(1 / np.sqrt(np.sum(A, axis=1)))
     A_ = np.dot(A_hat, D_hat).dot(A_hat)
     return A_
+
+def laplacian(A):
+    D = np.sum(A, 0)
+    return D - A
+
+def sym_norm_laplacian(A):
+    I = np.eye(np.shape(A)[0])
+    return I - sym_normalise_A(A)
+
 
 
 def get_A_X(loader):
@@ -37,8 +49,11 @@ def get_A_X(loader):
         all_X = loader.get_node_label()
         ids = all_X[all_X['node'].isin(nodes_to_keep)].index
         X = pd.get_dummies(all_X['label']).iloc[ids].values
-        G = nx.from_pandas_edgelist(adj, 'from', 'to')
-        A = nx.to_numpy_array(G)
+        # G = nx.from_pandas_edgelist(adj, 'from', 'to')
+        g = nx.Graph()
+        g.add_nodes_from(ids)
+        g.add_edges_from(adj.values)
+        A = nx.to_numpy_array(g)
         return A, X
 
     A, X = zip(*[get_A_X_by_graph_id(id) for id in range(1, numGraphs + 1)])
@@ -65,18 +80,85 @@ def get_A_X(loader):
     return padA, padX
 
 
-def get_data(dropbox_name, file_name_ext):
+def get_data(dropbox_name, file_name_ext, preprocessA):
     dataset = DropboxLoader(dropbox_name)
 
-    if os.path.isfile(dropbox_name + file_name_ext):
-        A_list, X = pickle.load(open(dropbox_name + file_name_ext, "rb"))
+    file_path = f'{dropbox_name}_{preprocessA}_{file_name_ext}'
+
+    if os.path.isfile(file_path):
+        A_list, X = pickle.load(open(file_path, "rb"))
     else:
         A, X = get_A_X(dataset)
-        A_list = list(map(csr_matrix, map(preprocess, A)))
-        pickle.dump((A_list, X), open(dropbox_name + file_name_ext, "wb"))
+
+        if 'add_self_loops' in preprocessA:
+            A = map(add_self_loops, A)
+
+        if 'sym_normalise_A' in preprocessA:
+            A = map(sym_normalise_A, A)
+
+        if 'laplacian' in preprocessA:
+            A = map(laplacian, A)
+
+        if 'sym_norm_laplacian' in preprocessA:
+            A = map(sym_norm_laplacian, A)
+
+        A_list = list(map(csr_matrix, A))
+        pickle.dump((A_list, X), open(file_path, "wb"))
     Y = dataset.get_graph_label()
 
     return A_list, X, Y
+
+
+def define_model(X, classes, out_dim_a2, out_dim_x2):
+    A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
+    X_in = Input(X[0].shape, name='X_in')
+
+    x1 = MyGCN(100, activation='relu')([A_in, X_in])
+    x1 = MyGCN(out_dim_a2, activation='softmax')([A_in, x1])
+
+    x2 = MyGCN(100, activation='relu')([A_in, X_in])
+    x2 = MyGCN(out_dim_x2, activation='relu')([A_in, x2])
+
+    x3 = Dot(axes=[1, 1])([x1, x2])
+    x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)
+    x4 = Dense(classes, activation='softmax')(x3)
+
+    return Model(inputs=[A_in, X_in], outputs=x4)
+
+
+def split_test_train(A_list, X, Y, train_idx, val_idx):
+    A_test = np.array([A_list[i] for i in val_idx])
+    A_train = np.array([A_list[i] for i in train_idx])
+
+    X_test = np.array([X[i] for i in val_idx])
+    X_train = np.array([X[i] for i in train_idx])
+
+    Y_test = to_categorical(Y)[val_idx]
+    Y_train = to_categorical(Y)[train_idx]
+
+    return A_test, A_train, X_test, X_train, Y_test, Y_train
+
+
+def batch_generator(A_X, y, batch_size):
+    number_of_batches = ceil(y.shape[0] / batch_size)
+    counter = 0
+    shuffle_index = np.arange(np.shape(y)[0])
+    np.random.shuffle(shuffle_index)
+    A_ = A_X[0]
+    X = A_X[1]
+    A_ = A_[shuffle_index]
+    X = X[shuffle_index]
+    y = y[shuffle_index]
+    while 1:
+        index_batch = shuffle_index[batch_size * counter:min(batch_size * (counter + 1), y.shape[0])]
+        A_batch = np.array(list(map(lambda a: csr_matrix.todense(a), A_[index_batch].tolist())))
+        X_batch = X[index_batch]
+        y_batch = y[index_batch]
+        counter += 1
+        yield ([A_batch, X_batch], y_batch)
+        if (counter < number_of_batches):
+            np.random.shuffle(shuffle_index)
+            counter = 0
 
 
 def main():
@@ -90,34 +172,36 @@ def main():
                 'preprocess_graph_labels': lambda x: x - 1,
                 'classes': 6,
             },
-            'MUTAG': {
-
-            },
-            'NCI1': {
-                'pretty_name': 'NCI-1',
-            },
-            'NCI109': {
-                'pretty_name': 'NCI-109',
-            },
-            'PTC_MM': {
-                'pretty_name': 'PTC-MM',
-            },
-            'PTC_FM': {
-                'pretty_name': 'PTC-FM',
-            },
-            'PTC_MR': {
-                'pretty_name': 'PTC-MR',
-            },
-            'PTC_FR': {
-                'pretty_name': 'PTC-FR',
-            },
+            # 'MUTAG': {
+            #
+            # },
+            # 'NCI1': {
+            #     'pretty_name': 'NCI-1',
+            # },
+            # 'NCI109': {
+            #     'pretty_name': 'NCI-109',
+            # },
+            # 'PTC_MM': {
+            #     'pretty_name': 'PTC-MM',
+            # },
+            # 'PTC_FM': {
+            #     'pretty_name': 'PTC-FM',
+            # },
+            # 'PTC_MR': {
+            #     'pretty_name': 'PTC-MR',
+            # },
+            # 'PTC_FR': {
+            #     'pretty_name': 'PTC-FR',
+            # },
         }
 
         batch_sizes = [50]
-        file_name_ext = "_normalise.p"
+        file_name_ext = "normalise.p"
 
         out_dim_a2 = 64
         out_dim_x2 = 64
+
+        preprocessA = ['add_self_loops', 'sym_normalise_A']
 
         for dataset_name, dataset in datasets.items():
 
@@ -136,7 +220,7 @@ def main():
                 # prepare data
                 print("preparing data")
 
-                A_list, X, Y = get_data(dropbox_name, file_name_ext)
+                A_list, X, Y = get_data(dropbox_name, file_name_ext, preprocessA)
 
                 Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
                 Y = np.array(Y)
@@ -204,57 +288,5 @@ def main():
                     [dropbox_name, batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
                 csv_file.flush()
 
-
-def define_model(X, classes, out_dim_a2, out_dim_x2):
-    A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
-    X_in = Input(X[0].shape, name='X_in')
-
-    x1 = MyGCN(100, activation='relu')([A_in, X_in])
-    x1 = MyGCN(out_dim_a2, activation='softmax')([A_in, x1])
-
-    x2 = MyGCN(100, activation='relu')([A_in, X_in])
-    x2 = MyGCN(out_dim_x2, activation='relu')([A_in, x2])
-
-    x3 = Dot(axes=[1, 1])([x1, x2])
-    x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)
-    x4 = Dense(classes, activation='softmax')(x3)
-
-    return Model(inputs=[A_in, X_in], outputs=x4)
-
-
-def split_test_train(A_list, X, Y, train_idx, val_idx):
-    A_test = np.array([A_list[i] for i in val_idx])
-    A_train = np.array([A_list[i] for i in train_idx])
-
-    X_test = np.array([X[i] for i in val_idx])
-    X_train = np.array([X[i] for i in train_idx])
-
-    Y_test = to_categorical(Y)[val_idx]
-    Y_train = to_categorical(Y)[train_idx]
-
-    return A_test, A_train, X_test, X_train, Y_test, Y_train
-
-
-def batch_generator(A_X, y, batch_size):
-    number_of_batches = ceil(y.shape[0] / batch_size)
-    counter = 0
-    shuffle_index = np.arange(np.shape(y)[0])
-    np.random.shuffle(shuffle_index)
-    A_ = A_X[0]
-    X = A_X[1]
-    A_ = A_[shuffle_index]
-    X = X[shuffle_index]
-    y = y[shuffle_index]
-    while 1:
-        index_batch = shuffle_index[
-                      batch_size * counter:min(batch_size * (counter + 1), y.shape[0])]
-        A_batch = np.array(list(map(lambda a: csr_matrix.todense(a), A_[index_batch].tolist())))
-        X_batch = X[index_batch]
-        y_batch = y[index_batch]
-        counter += 1
-        yield ([A_batch, X_batch], y_batch)
-        if (counter < number_of_batches):
-            np.random.shuffle(shuffle_index)
-            counter = 0
 
 main()
