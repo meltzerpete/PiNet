@@ -21,23 +21,25 @@ def add_self_loops(A):
     np.fill_diagonal(A, 1)
     return A
 
+
 def sym_normalise_A(A):
     A_hat = A
     D_hat = np.diag(1 / np.sqrt(np.sum(A, axis=1)))
     A_ = np.dot(A_hat, D_hat).dot(A_hat)
     return A_
 
+
 def laplacian(A):
     D = np.sum(A, 0)
     return D - A
+
 
 def sym_norm_laplacian(A):
     I = np.eye(np.shape(A)[0])
     return I - sym_normalise_A(A)
 
 
-
-def get_A_X(loader):
+def get_A_X(loader, normalise_by_num_nodes=True):
     all_adj = loader.get_adj()
     graph_ind = loader.get_graph_ind()
     numGraphs = graph_ind.max()['graph_ind']
@@ -60,9 +62,8 @@ def get_A_X(loader):
     num_nodes_list = list(map(lambda a: a.shape[0], X))
     maxNodes = max(num_nodes_list)
 
-    def normaliseX_by_num_nodes(x_num_nodes):
-        x, num_nodes = x_num_nodes
-        return np.divide(x, num_nodes)
+    def normaliseX_by_num_nodes(x):
+        return np.divide(x, x.shape[0])
 
     def padA(a):
         padA = np.zeros([maxNodes, maxNodes])
@@ -75,20 +76,23 @@ def get_A_X(loader):
         return padX
 
     padA = list(map(padA, A))
-    padX = list(map(padX, map(normaliseX_by_num_nodes, zip(X, num_nodes_list))))
+    if normailse_by_num_nodes:
+        X = map(normaliseX_by_num_nodes, X)
+
+    padX = list(map(padX, X))
 
     return padA, padX
 
 
-def get_data(dropbox_name, file_name_ext, preprocessA):
+def get_data(dropbox_name, file_name_ext, preprocessA, normalise_by_num_nodes=False):
     dataset = DropboxLoader(dropbox_name)
 
-    file_path = f'{dropbox_name}_{preprocessA}_{file_name_ext}'
+    file_path = f'{dropbox_name}_{preprocessA}_{normalise_by_num_nodes}_{file_name_ext}'
 
     if os.path.isfile(file_path):
         A_list, X = pickle.load(open(file_path, "rb"))
     else:
-        A, X = get_A_X(dataset)
+        A, X = get_A_X(dataset, normalise_by_num_nodes)
 
         if 'add_self_loops' in preprocessA:
             A = map(add_self_loops, A)
@@ -161,23 +165,73 @@ def batch_generator(A_X, y, batch_size):
             counter = 0
 
 
+def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_dim_a2, out_dim_x2):
+    accuracies = []
+    times = []
+    for j, (train_idx, val_idx) in enumerate(folds):
+        print("split :", j)
+
+        A_test, A_train, X_test, X_train, Y_test, Y_train \
+            = split_test_train(A_list, X, Y, train_idx, val_idx)
+
+        model = define_model(X, classes, out_dim_a2, out_dim_x2)
+
+        model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+        # model.summary()
+
+        tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dropbox_name + '/' + str(j),
+                                                  histogram_freq=0,
+                                                  write_grads=False,
+                                                  write_graph=True, write_images=False)
+
+        reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
+                                                               factor=0.1,
+                                                               patience=3,
+                                                               verbose=1)
+
+        steps = ceil(Y_test.shape[0] / batch_size)
+
+        start = time.time()
+        history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
+                                      epochs=200,
+                                      steps_per_epoch=steps,
+                                      # callbacks=[tb_callback],
+                                      verbose=1)
+
+        train_time = time.time() - start
+
+        print("train time: ", train_time)
+        times.append(train_time)
+
+        stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size),
+                                         steps=steps)
+
+        for metric, val in zip(model.metrics_names, stats):
+            print(metric + ": ", val)
+
+        accuracies.append(stats[1])
+    return accuracies, times
+
+
 def main():
     with open('out.csv', 'a') as csv_file:
         res_writer = writer(csv_file, delimiter=';')
         res_writer.writerow(
-            ["dataset", "batch_size", "mean_acc", "acc_std", "mean_train_time(s)", "time_std", "all_accs", "all_times"])
+            ["dataset", "preprocessA", "normalise_by_num_nodes", "batch_size", "mean_acc", "acc_std",
+             "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
         datasets = {
-            'ENZYMES': {
-                'preprocess_graph_labels': lambda x: x - 1,
-                'classes': 6,
-            },
+            # 'ENZYMES': {
+            #     'preprocess_graph_labels': lambda x: x - 1,
+            #     'classes': 6,
+            # },
             # 'MUTAG': {
             #
             # },
-            # 'NCI1': {
-            #     'pretty_name': 'NCI-1',
-            # },
+            'NCI1': {
+                'pretty_name': 'NCI-1',
+            },
             # 'NCI109': {
             #     'pretty_name': 'NCI-109',
             # },
@@ -195,98 +249,60 @@ def main():
             # },
         }
 
-        batch_sizes = [50]
-        file_name_ext = "normalise.p"
+        for preprocessA in [[], ['add_self_loops'], ['add_self_loops', 'sym_normalise_A'],
+                            ['sym_normalise_A'], ['laplacian'], ['sym_norm_laplacian']]:
 
-        out_dim_a2 = 64
-        out_dim_x2 = 64
+            for normalise_by_num_nodes in [True, False]:
 
-        preprocessA = ['add_self_loops', 'sym_normalise_A']
+                batch_sizes = [50]
+                file_name_ext = "normalise.p"
 
-        for dataset_name, dataset in datasets.items():
+                out_dim_a2 = 64
+                out_dim_x2 = 64
 
-            print("Dataset: ", dataset_name)
+                for dataset_name, dataset in datasets.items():
 
-            dropbox_name = dataset['dropbox_name'] \
-                if 'dropbox_name' in dataset.keys() else dataset_name
+                    print("Dataset: ", dataset_name)
 
-            preprocess_graph_labels = dataset['preprocess_graph_labels'] \
-                if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
+                    dropbox_name = dataset['dropbox_name'] \
+                        if 'dropbox_name' in dataset.keys() else dataset_name
 
-            classes = dataset['classes'] \
-                if 'classes' in dataset.keys() else 2
+                    preprocess_graph_labels = dataset['preprocess_graph_labels'] \
+                        if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
 
-            for batch_size in batch_sizes:
-                # prepare data
-                print("preparing data")
+                    classes = dataset['classes'] \
+                        if 'classes' in dataset.keys() else 2
 
-                A_list, X, Y = get_data(dropbox_name, file_name_ext, preprocessA)
+                    for batch_size in batch_sizes:
+                        # prepare data
+                        print("preparing data")
 
-                Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
-                Y = np.array(Y)
+                        A_list, X, Y = get_data(dropbox_name, file_name_ext, preprocessA, normalise_by_num_nodes)
 
-                folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
+                        Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
+                        Y = np.array(Y)
 
-                accuracies = []
-                times = []
-                for j, (train_idx, val_idx) in enumerate(folds):
-                    print("split :", j)
+                        folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 
-                    A_test, A_train, X_test, X_train, Y_test, Y_train \
-                        = split_test_train(A_list, X, Y, train_idx, val_idx)
+                        accuracies, times = build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds,
+                                                           out_dim_a2, out_dim_x2)
 
-                    model = define_model(X, classes, out_dim_a2, out_dim_x2)
+                        print(dropbox_name)
+                        mean_acc = np.mean(accuracies)
+                        print("mean acc:", mean_acc)
+                        acc_std = np.std(accuracies)
+                        print("std dev:", acc_std)
+                        print("accs:", accuracies)
+                        mean_time = np.mean(times)
+                        print("mean train time", mean_time)
+                        time_std = np.std(times)
+                        print("std dev:", time_std, end="\n\n")
 
-                    model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
-
-                    model.summary()
-
-                    tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dropbox_name + '/' + str(j),
-                                                              histogram_freq=0,
-                                                              write_grads=False,
-                                                              write_graph=True, write_images=False)
-
-                    reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
-                                                                           factor=0.1,
-                                                                           patience=3,
-                                                                           verbose=1)
-
-                    steps = ceil(Y_test.shape[0] / batch_size)
-
-                    start = time.time()
-                    history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
-                                                  epochs=200,
-                                                  steps_per_epoch=steps,
-                                                  # callbacks=[tb_callback],
-                                                  verbose=1)
-
-                    train_time = time.time() - start
-
-                    print("train time: ", train_time)
-                    times.append(train_time)
-
-                    stats = model.evaluate_generator(generator=batch_generator([A_test, X_test], Y_test, batch_size),
-                                                     steps=steps)
-
-                    for metric, val in zip(model.metrics_names, stats):
-                        print(metric + ": ", val)
-
-                    accuracies.append(stats[1])
-
-                print(dropbox_name)
-                mean_acc = np.mean(accuracies)
-                print("mean acc:", mean_acc)
-                acc_std = np.std(accuracies)
-                print("std dev:", acc_std)
-                print("accs:", accuracies)
-                mean_time = np.mean(times)
-                print("mean train time", mean_time)
-                time_std = np.std(times)
-                print("std dev:", time_std, end="\n\n")
-
-                res_writer.writerow(
-                    [dropbox_name, batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
-                csv_file.flush()
+                        res_writer.writerow(
+                            [dropbox_name, preprocessA, normalise_by_num_nodes, batch_size, mean_acc, acc_std,
+                             mean_time,
+                             time_std, accuracies, times])
+                        csv_file.flush()
 
 
 main()
