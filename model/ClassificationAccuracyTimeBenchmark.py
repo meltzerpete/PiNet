@@ -23,14 +23,16 @@ def add_self_loops(A):
 
 
 def sym_normalise_A(A):
-    A_hat = A
-    D_hat = np.diag(1 / np.sqrt(np.sum(A, axis=1)))
-    A_ = np.dot(A_hat, D_hat).dot(A_hat)
+    # may produce / by 0 warning but this is ok: inf replaced by 0
+    d_hat_with_inf = 1 / np.sqrt(np.sum(A, axis=1))
+    d_hat_with_inf[np.isinf(d_hat_with_inf)] = 0
+    D_hat = np.diag(d_hat_with_inf)
+    A_ = np.dot(D_hat, A).dot(D_hat)
     return A_
 
 
 def laplacian(A):
-    D = np.sum(A, 0)
+    D = np.diag(np.sum(A, 0))
     return D - A
 
 
@@ -231,10 +233,10 @@ def main():
 
         else:
             datasets = {
-                'ENZYMES': {
-                    'preprocess_graph_labels': lambda x: x - 1,
-                    'classes': 6,
-                },
+                # 'ENZYMES': {
+                #     'preprocess_graph_labels': lambda x: x - 1,
+                #     'classes': 6,
+                # },
                 'MUTAG': {},
                 'NCI1': {
                     'pretty_name': 'NCI-1',
@@ -260,8 +262,7 @@ def main():
         out_dim_a2 = 64
         out_dim_x2 = 64
 
-        for preprocessA in [[], ['add_self_loops'], ['add_self_loops', 'sym_normalise_A'],
-                            ['sym_normalise_A'], ['laplacian'], ['sym_norm_laplacian']]:
+        for preprocessA in [['sym_normalise_A'], ['sym_norm_laplacian']]:
             for normalise_by_num_nodes in [True, False]:
                 for dataset_name, dataset in datasets.items():
 
