@@ -13,6 +13,18 @@ from model.MyGCN import MyGCN
 
 
 class GraphClassifier:
+    """
+    Graph Classifier
+        :param A: Adjacency matrices - List of ndarrays
+        :param X: Features matrices - List of ndarrays
+        :param Y: Labels - (n x 1) ndarray
+        :param dataset_name: String
+        :param num_classes: default 2
+        :param out_dim_a2: output dimension for attention
+        :param out_dim_x2: output dimension for features
+        :param tensor_board_logging: enable logginf for TensorBoard
+        :param reduce_lr_callback: reduce learning rate based on validation set
+        """
     def __init__(self, A, X, Y, dataset_name='dataset', num_classes=2,
                  out_dim_a2=64, out_dim_x2=64, tensor_board_logging=False,
                  reduce_lr_callback=False):
