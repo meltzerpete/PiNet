@@ -14,7 +14,7 @@
 classifier = GraphClassifier(A, X, Y, 'dataset_name', num_classes=num_classes)
 
 # preprocess_A() converts A to list of scipy.sparse.csr_matrix - this must be called
-# optionally pass list of preprocessing methods from :
+# optionally pass list of preprocessing methods from:
 # - add self loops
 # - sym_normalise_A
 # - laplacian
