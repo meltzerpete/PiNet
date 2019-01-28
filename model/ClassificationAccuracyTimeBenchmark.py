@@ -233,10 +233,10 @@ def main():
 
         else:
             datasets = {
-                # 'ENZYMES': {
-                #     'preprocess_graph_labels': lambda x: x - 1,
-                #     'classes': 6,
-                # },
+                'ENZYMES': {
+                    'preprocess_graph_labels': lambda x: x - 1,
+                    'classes': 6,
+                },
                 'MUTAG': {},
                 'NCI1': {
                     'pretty_name': 'NCI-1',
