@@ -2,3 +2,4 @@
 *.swp
 *.pdf
 *.p
+**/events.out.tfevents*
