@@ -1,6 +1,8 @@
 import networkx as nx
 import numpy as np
 
+NODE_LABELS = 'feats'
+
 
 def generate_graph_samples(initial_graph, number_of_graphs, num_node_classes, seed=42):
     # Seed
@@ -11,7 +13,7 @@ def generate_graph_samples(initial_graph, number_of_graphs, num_node_classes, se
     node_classes = np.random.random_integers(0, num_node_classes - 1, nx.number_of_nodes(initial_graph))
 
     feats = {k: v for k, v in enumerate(node_classes)}
-    nx.set_node_attributes(graph, feats, 'feats')
+    nx.set_node_attributes(graph, feats, NODE_LABELS)
 
     sampled_graphs.append(graph)
 
@@ -76,6 +78,8 @@ def add_random_categorical_variables(nx_graph, num_features):
 
 
 
+
+
 def get_tensors(num_nodes_per_graph, num_graph_classes, num_node_classes, num_graphs_per_class):
     graph_dataset = generate_samples_of_n_classes(num_nodes=num_nodes_per_graph,
                                                   num_class=num_graph_classes,
@@ -89,7 +93,7 @@ def get_tensors(num_nodes_per_graph, num_graph_classes, num_node_classes, num_gr
     for n in range(num_graph_classes):
         for g_id in range(num_graphs_per_class):
             A.append(nx.to_numpy_array(graph_dataset[n][g_id], range(num_nodes_per_graph)))
-            x_kv = nx.get_node_attributes(graph_dataset[n][g_id], 'feats')
+            x_kv = nx.get_node_attributes(graph_dataset[n][g_id], NODE_LABELS )
             x = np.zeros([num_nodes_per_graph, num_node_classes])
             for r, c in x_kv.items():
                 x[r, c] = 1
