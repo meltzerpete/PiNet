@@ -55,6 +55,7 @@ class GraphClassifier:
 
     def fit_eval(self, A, X, Y, num_classes, epochs=200, batch_size=50,
                  folds=None, dataset_name='dataset_name', preprocess_A=None, verbose=1):
+
         print('preprocess A:', preprocess_A)
         A = self._preprocess_A(A, preprocess_A)
 
