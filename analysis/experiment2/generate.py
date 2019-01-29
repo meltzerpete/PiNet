@@ -57,6 +57,25 @@ def generate_samples_of_n_classes(num_nodes, num_class, num_graphs_per_class, nu
     return dict_class_graphs
 
 
+def gen_iter_attributes_dict(nx_graph, num_features, seed=42, attr_name='node_label'):
+    #    for i in df_nodes.label.unique():
+    #        yield(i,df_nodes[df_nodes['label']==i].node.tolist())
+
+    num_nodes = nx_graph.number_of_nodes()
+    nodes = list(nx_graph.nodes())
+    random_features = np.random.choice(range(num_features), num_nodes)
+
+    for node, value in zip(nodes, random_features):
+        yield (node, {attr_name: value})
+
+
+def add_random_categorical_variables(nx_graph, num_features):
+    nx_graph.add_nodes_from(gen_iter_attributes_dict(nx_graph, num_features))
+
+
+
+
+
 def get_tensors(num_nodes_per_graph, num_graph_classes, num_node_classes, num_graphs_per_class):
     graph_dataset = generate_samples_of_n_classes(num_nodes=num_nodes_per_graph,
                                                   num_class=num_graph_classes,
