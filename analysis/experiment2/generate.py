@@ -69,7 +69,7 @@ def get_tensors(num_nodes_per_graph, num_graph_classes, num_node_classes, num_gr
 
     for n in range(num_graph_classes):
         for g_id in range(num_graphs_per_class):
-            A.append(nx.to_numpy_array(graph_dataset[n][g_id]))
+            A.append(nx.to_numpy_array(graph_dataset[n][g_id], range(num_nodes_per_graph)))
             x_kv = nx.get_node_attributes(graph_dataset[n][g_id], 'feats')
             x = np.zeros([num_nodes_per_graph, num_node_classes])
             for r, c in x_kv.items():
