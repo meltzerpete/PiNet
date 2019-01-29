@@ -15,24 +15,13 @@ from model.MyGCN import MyGCN
 class GraphClassifier:
     """
     Graph Classifier
-        :param A: Adjacency matrices - List of ndarrays
-        :param X: Features matrices - List of ndarrays
-        :param Y: Labels - (n x 1) ndarray
-        :param dataset_name: String
-        :param num_classes: default 2
         :param out_dim_a2: output dimension for attention
         :param out_dim_x2: output dimension for features
         :param tensor_board_logging: enable logginf for TensorBoard
         :param reduce_lr_callback: reduce learning rate based on validation set
         """
-    def __init__(self, A, X, Y, dataset_name='dataset', num_classes=2,
-                 out_dim_a2=64, out_dim_x2=64, tensor_board_logging=False,
+    def __init__(self, out_dim_a2=64, out_dim_x2=64, tensor_board_logging=False,
                  reduce_lr_callback=False):
-        self._A = A
-        self._X = X
-        self._Y = Y
-        self._dataset_name = dataset_name
-        self._num_classes = num_classes
         self._out_dim_a2 = out_dim_a2
         self._out_dim_x2 = out_dim_x2
         self._tensor_board_logging = tensor_board_logging
@@ -41,10 +30,9 @@ class GraphClassifier:
         self._model = None
         self._history = None
 
-    def preprocess_A(self, preprocess_A=None):
+    def _preprocess_A(self, A, preprocess_A=None):
         if preprocess_A is None:
             preprocess_A = []
-        A = self._A.copy()
 
         if 'add_self_loops' in preprocess_A:
             A = map(self._add_self_loops, A)
@@ -58,30 +46,33 @@ class GraphClassifier:
         if 'sym_norm_laplacian' in preprocess_A:
             A = map(self._sym_norm_laplacian, A)
 
-        self._A = list(map(csr_matrix, A))
+        return list(map(csr_matrix, A))
 
     def get_predictions(self, A, X, Y, batch_size=50):
         steps = ceil(Y.shape[0] / batch_size)
         return self._model.predict_generator(
             generator=self._pred_batch_generator([A, X], Y, batch_size), steps=steps)
 
-    def build_fit_eval(self, epochs=200, batch_size=50, folds=None, verbose=1):
+    def fit_eval(self, A, X, Y, num_classes, epochs=200, batch_size=50,
+                 folds=None, dataset_name='dataset_name', preprocess_A=None, verbose=1):
+        print('preprocess A:', preprocess_A)
+        A = self._preprocess_A(A, preprocess_A)
+
         accuracies = []
         times = []
         for j, (train_idx, val_idx) in enumerate(folds):
             print("split :", j)
-
             A_test, A_train, X_test, X_train, Y_test, Y_train \
-                = self._split_test_train(train_idx, val_idx)
+                = self._split_test_train(A, X, Y, train_idx, val_idx)
 
-            self._model = self._define_model()
+            self._model = self._define_model(X_shape=X.shape[1:], num_classes=num_classes)
             self._model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
             # model.summary()
 
             callbacks = []
 
             if self._tensor_board_logging:
-                tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + self._dataset_name + '/' + str(j),
+                tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dataset_name + '/' + str(j),
                                                           histogram_freq=0,
                                                           write_grads=False,
                                                           write_graph=True, write_images=False)
@@ -139,9 +130,9 @@ class GraphClassifier:
         I = np.eye(np.shape(A)[0])
         return I - self._sym_normalise_A(A)
 
-    def _define_model(self):
-        A_in = Input((self._X[0].shape[0], self._X[0].shape[0]), name='A_in')
-        X_in = Input(self._X[0].shape, name='X_in')
+    def _define_model(self, X_shape, num_classes):
+        A_in = Input((X_shape[0], X_shape[0]), name='A_in')
+        X_in = Input(X_shape, name='X_in')
 
         x1 = MyGCN(100, activation='relu')([A_in, X_in])
         x1 = MyGCN(self._out_dim_a2, activation='softmax')([A_in, x1])
@@ -151,19 +142,20 @@ class GraphClassifier:
 
         x3 = Dot(axes=[1, 1])([x1, x2])
         x3 = Reshape((self._out_dim_a2 * self._out_dim_x2,))(x3)
-        x4 = Dense(self._num_classes, activation='softmax')(x3)
+        x4 = Dense(num_classes, activation='softmax')(x3)
 
         return Model(inputs=[A_in, X_in], outputs=x4)
 
-    def _split_test_train(self, train_idx, val_idx):
-        A_test = np.array([self._A[i] for i in val_idx])
-        A_train = np.array([self._A[i] for i in train_idx])
+    def _split_test_train(self, A, X, Y, train_idx, val_idx):
+        A_test = np.array([A[i] for i in val_idx])
+        A_train = np.array([A[i] for i in train_idx])
 
-        X_test = np.array([self._X[i] for i in val_idx])
-        X_train = np.array([self._X[i] for i in train_idx])
+        X_test = np.array([X[i] for i in val_idx])
+        X_train = np.array([X[i] for i in train_idx])
+        
+        Y_test = to_categorical(Y)[val_idx]
+        Y_train = to_categorical(Y)[train_idx]
 
-        Y_test = to_categorical(self._Y)[val_idx]
-        Y_train = to_categorical(self._Y)[train_idx]
 
         return A_test, A_train, X_test, X_train, Y_test, Y_train
 
