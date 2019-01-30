@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 from model.GraphClassifier import GraphClassifier
 from analysis.experiment2 import generate
-from analysis.experiment2.GCNwithOptionalSum import GCNwithOptionalSum
+from analysis.experiment2.GCNWithOptionalSum import GCNWithOptionalSum
 from analysis.experiment2.WLKernel import WLKernel
 from csv import writer
 
@@ -32,7 +32,7 @@ class IsomorphismExperiment(object):
         batch_size = 5
         examples_per_classes = [2, 4, 6, 8, 10]
 
-        classifiers = [self, WLKernel(), GCNwithOptionalSum(True), GCNwithOptionalSum(False)]
+        classifiers = [self, WLKernel(), GCNWithOptionalSum(True), GCNWithOptionalSum(False)]
 
         # generate data
         A, X, Y = generate.get_tensors(num_nodes_per_graph,

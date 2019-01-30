@@ -51,6 +51,12 @@ StratifiedKFold:
 
 # Experiments
 
+## Experiment Dependencies
+
+Add the following to the classpath:
+- https://github.com/jajupmochi/py-graph
+- [PyGamma](https://github.com/BraintreeLtd/PyGamma)
+
 ## Experiment 1: Message Passing Mechanisms
 
 Observe effect of various matrices for message passing/diffusion.
@@ -64,7 +70,7 @@ Observe effect of various matrices for message passing/diffusion.
 - main (graph classifier): [analysis/eperiment2/IsomorphismExperiment.py](analysis/eperiment2/IsomorphismExperiment.py)
 - WL Kernel: [analysis/experiment2/WLKernel.py](analysis/experiment2/WLKernel.py)
 - patchy-sans: TODO
-- GCN only (with optional sum before dense): [analysis/experiment2/GCNwithOptionalSum.py](analysis/experiment2/GCNwithOptionalSum.py)
+- GCN only (with optional sum before dense): [analysis/experiment2/GCNWithOptionalSum.py](analysis/experiment2/GCNWithOptionalSum.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
 - analysis: TODO
 

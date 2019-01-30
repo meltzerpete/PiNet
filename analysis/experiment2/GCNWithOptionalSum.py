@@ -12,7 +12,7 @@ from model.GraphClassifier import GraphClassifier
 from model.MyGCN import MyGCN
 
 
-class GCNwithOptionalSum:
+class GCNWithOptionalSum:
     def __init__(self, with_sum=False):
         self.with_sum = with_sum
 
