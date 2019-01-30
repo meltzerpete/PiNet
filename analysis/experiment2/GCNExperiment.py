@@ -10,10 +10,11 @@ from model.ClassificationAccuracyTimeBenchmark import split_test_train
 from model.GraphClassifier import GraphClassifier
 from model.MyGCN import MyGCN
 
-num_nodes_per_graph=100
-num_graph_classes=10
+num_nodes_per_graph=50
+num_graph_classes=5
 num_node_classes=2
 num_graphs_per_class=50
+batch_size = 5
 
 A, X, y = generate.get_tensors(num_nodes_per_graph,
                                num_graph_classes,
@@ -40,11 +41,11 @@ for train_idx, val_idx in iter(splits):
 
     model = Model(inputs=[A_in, X_in], outputs=x4)
 
-    print(model.summary())
+    # print(model.summary())
 
     model.compile(Adam(), loss='categorical_crossentropy', metrics=['acc'])
     generator = GraphClassifier().batch_generator([A_train, X_train], y_train, 5)
-    model.fit_generator(generator, X.shape[0] / 5, 20)
+    model.fit_generator(generator, X.shape[0] / 5, 200, verbose=0)
 
     stats = model.evaluate_generator(GraphClassifier().batch_generator([A_test, X_test], y_test, 5), X.shape[0] / 5)
 
