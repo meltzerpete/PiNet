@@ -1,12 +1,12 @@
 import numpy as np
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 from model.GraphClassifier import GraphClassifier
 from analysis.experiment2 import generate
 
 num_nodes_per_graph=50
 num_graph_classes=5
 num_node_classes=2
-num_graphs_per_class=50
+num_graphs_per_class=100
 batch_size = 5
 
 A, X, Y = generate.get_tensors(num_nodes_per_graph,
@@ -16,7 +16,9 @@ A, X, Y = generate.get_tensors(num_nodes_per_graph,
 
 classifier = GraphClassifier()
 
-folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
+# folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
+folds = StratifiedShuffleSplit(n_splits=10, train_size=num_graph_classes*2).split(X, Y)
+
 accs, times = classifier.fit_eval(A, X, Y, num_classes=num_graph_classes,
                                   epochs=200, batch_size=batch_size, folds=folds, verbose=0)
 

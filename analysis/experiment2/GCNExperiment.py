@@ -1,9 +1,12 @@
+from math import ceil
+
 import numpy as np
 from keras import Model
 from keras.layers import Dense, Flatten
 from keras.models import Input
 from keras.optimizers import Adam
-from sklearn.model_selection import StratifiedKFold
+from keras.utils import to_categorical
+from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from analysis.experiment2 import generate
 from model.ClassificationAccuracyTimeBenchmark import split_test_train
@@ -13,7 +16,7 @@ from model.MyGCN import MyGCN
 num_nodes_per_graph=50
 num_graph_classes=5
 num_node_classes=2
-num_graphs_per_class=50
+num_graphs_per_class=100
 batch_size = 5
 
 A, X, y = generate.get_tensors(num_nodes_per_graph,
@@ -24,12 +27,19 @@ A, X, y = generate.get_tensors(num_nodes_per_graph,
 
 splits = StratifiedKFold(10, shuffle=True).split(X, y)
 
-# y = to_categorical(Y, num_graph_classes)
 accuracies = []
 for train_idx, val_idx in iter(splits):
 
-    A_test, A_train, X_test, X_train, y_test, y_train \
-        = split_test_train(A, X, y, train_idx, val_idx)
+    A_train, A_test, X_train, X_test, y_train, y_test \
+        = train_test_split(A, X, y, train_size=num_graph_classes*2,
+                           shuffle=True, stratify=y)
+    y_train = to_categorical(y_train, num_graph_classes)
+    y_test = to_categorical(y_test, num_graph_classes)
+    print(A_train.shape, X_train.shape, y_train.shape)
+
+    # A_test, A_t/rain, X_test, X_train, y_test, y_train \
+    #     = split_test_train(A, X, y, train_idx, val_idx)
+    # print(A_train.shape, X_train.shape, y_train.shape)
 
     A_in = Input((A[0].shape[0], A[0].shape[1]), name='A_in')
     X_in = Input(X[0].shape, name='X_in')
@@ -41,13 +51,13 @@ for train_idx, val_idx in iter(splits):
 
     model = Model(inputs=[A_in, X_in], outputs=x4)
 
-    # print(model.summary())
+    print(model.summary())
 
     model.compile(Adam(), loss='categorical_crossentropy', metrics=['acc'])
-    generator = GraphClassifier().batch_generator([A_train, X_train], y_train, 5)
-    model.fit_generator(generator, X.shape[0] / 5, 200, verbose=0)
+    generator = GraphClassifier().batch_generator([A_train, X_train], y_train, batch_size)
+    model.fit_generator(generator, ceil(y_train.shape[0] / batch_size), 200, verbose=1)
 
-    stats = model.evaluate_generator(GraphClassifier().batch_generator([A_test, X_test], y_test, 5), X.shape[0] / 5)
+    stats = model.evaluate_generator(GraphClassifier().batch_generator([A_test, X_test], y_test, 5), y_test.shape[0] / batch_size)
 
     for metric, val in zip(model.metrics_names, stats):
         print(metric + ": ", val)
