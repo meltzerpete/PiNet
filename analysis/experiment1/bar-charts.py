@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # prepare data
-df = pd.read_csv("out.csv", sep=";")
+df = pd.read_csv("results-2019-01-29.csv", sep=";")
+df.drop(df.loc[df['normalise_by_num_nodes']].index, inplace=True)
 ptc = df.loc[df['dataset'].str.startswith("PTC")] \
     .groupby(["preprocessA", "normalise_by_num_nodes"], as_index=False).mean()
 ptc['dataset'] = 'PTC'
