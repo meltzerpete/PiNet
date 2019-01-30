@@ -312,4 +312,4 @@ def main():
                         csv_file.flush()
 
 
-main()
+# main()

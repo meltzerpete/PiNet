@@ -90,7 +90,7 @@ class GraphClassifier:
 
             start = time.time()
             self._history = self._model.fit_generator(
-                generator=self._batch_generator([A_train, X_train], Y_train, batch_size),
+                generator=self.batch_generator([A_train, X_train], Y_train, batch_size),
                 epochs=epochs,
                 steps_per_epoch=steps,
                 callbacks=callbacks,
@@ -102,7 +102,7 @@ class GraphClassifier:
             times.append(train_time)
 
             stats = self._model.evaluate_generator(
-                generator=self._batch_generator([A_test, X_test], Y_test, batch_size),
+                generator=self.batch_generator([A_test, X_test], Y_test, batch_size),
                 steps=steps)
 
             for metric, val in zip(self._model.metrics_names, stats):
@@ -160,7 +160,7 @@ class GraphClassifier:
 
         return A_test, A_train, X_test, X_train, Y_test, Y_train
 
-    def _batch_generator(self, A_X, y, batch_size):
+    def batch_generator(self, A_X, y, batch_size):
         number_of_batches = ceil(y.shape[0] / batch_size)
         counter = 0
         shuffle_index = np.arange(np.shape(y)[0])
