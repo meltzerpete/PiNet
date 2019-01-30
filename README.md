@@ -4,10 +4,10 @@
 
 <!-- vim-markdown-toc GFM -->
 
-	* [Example Usage](#example-usage)
-	* [Computation](#computation)
-	* [Evaluation](#evaluation)
-	* [Data Generator](#data-generator)
+* [Example Usage](#example-usage)
+* [Computation](#computation)
+* [Evaluation](#evaluation)
+* [Data Generator](#data-generator)
 * [Experiments](#experiments)
 	* [Dependencies](#dependencies)
 	* [Experiment 1: Message Passing Mechanisms](#experiment-1-message-passing-mechanisms)
