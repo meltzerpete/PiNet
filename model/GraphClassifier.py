@@ -56,13 +56,17 @@ class GraphClassifier:
     def fit_eval(self, A, X, Y, num_classes, epochs=200, batch_size=50,
                  folds=None, dataset_name='dataset_name', preprocess_A=None, verbose=1):
 
-        print('preprocess A:', preprocess_A)
+        if verbose > 0:
+            print('preprocess A:', preprocess_A)
         A = self._preprocess_A(A, preprocess_A)
 
         accuracies = []
         times = []
         for j, (train_idx, val_idx) in enumerate(folds):
-            print("split :", j)
+
+            if verbose > 0:
+                print("split :", j)
+
             A_test, A_train, X_test, X_train, Y_test, Y_train \
                 = self._split_test_train(A, X, Y, train_idx, val_idx)
 
@@ -98,15 +102,17 @@ class GraphClassifier:
 
             train_time = time.time() - start
 
-            print("train time: ", train_time)
+            if verbose > 0:
+                print("train time: ", train_time)
             times.append(train_time)
 
             stats = self._model.evaluate_generator(
                 generator=self.batch_generator([A_test, X_test], Y_test, batch_size),
                 steps=steps)
 
-            for metric, val in zip(self._model.metrics_names, stats):
-                print(metric + ": ", val)
+            if verbose > 0:
+                for metric, val in zip(self._model.metrics_names, stats):
+                    print(metric + ": ", val)
 
             accuracies.append(stats[1])
         return accuracies, times
