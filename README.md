@@ -4,12 +4,12 @@
 
 <!-- vim-markdown-toc GFM -->
 
-* [Example Usage](#example-usage)
-* [Computation](#computation)
-* [Evaluation](#evaluation)
-* [Data Generator](#data-generator)
+	* [Example Usage](#example-usage)
+	* [Computation](#computation)
+	* [Evaluation](#evaluation)
+	* [Data Generator](#data-generator)
 * [Experiments](#experiments)
-	* [Experiment Dependencies](#experiment-dependencies)
+	* [Dependencies](#dependencies)
 	* [Experiment 1: Message Passing Mechanisms](#experiment-1-message-passing-mechanisms)
 	* [Experiment 2: Isomorphism](#experiment-2-isomorphism)
 	* [Experiment 3: Benchmark Against SOA](#experiment-3-benchmark-against-soa)
