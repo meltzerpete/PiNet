@@ -69,10 +69,26 @@ Observe effect of various matrices for message passing/diffusion.
 
 - main (graph classifier): [analysis/eperiment2/IsomorphismExperiment.py](analysis/experiment2/IsomorphismExperiment.py)
 - WL Kernel: [analysis/experiment2/WLKernel.py](analysis/experiment2/WLKernel.py)
-- patchy-sans: TODO
+- patchy-sans: provided by MG
 - GCN only (with optional sum before dense): [analysis/experiment2/GCNWithOptionalSum.py](analysis/experiment2/GCNWithOptionalSum.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
-- analysis: TODO
+- analysis: [analysis/experiment2/analysis.py](analysis/experiment2/analysis.py)
+
+params:
+```python
+num_nodes_per_graph = 50
+num_graph_classes = 5
+num_node_classes = 2
+num_graphs_per_class = 100
+batch_size = 5
+examples_per_classes = [2, 4, 6, 8, 10]
+```
+
+- train set selected by stratified sample
+- repeated 10x per `exmaples_per_classes`
+
+![](analysis/experiment2/isomorphism-test.png | width = 10cm)
+
 
 ## Experiment 3: Benchmark Against SOA
 
