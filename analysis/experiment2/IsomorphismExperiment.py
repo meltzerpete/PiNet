@@ -17,10 +17,10 @@ A, X, Y = generate.get_tensors(num_nodes_per_graph,
 classifier = GraphClassifier()
 
 # folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
-folds = StratifiedShuffleSplit(n_splits=10, train_size=num_graph_classes*2).split(X, Y)
+splits = StratifiedShuffleSplit(n_splits=10, train_size=num_graph_classes*2).split(X, Y)
 
 accs, times = classifier.fit_eval(A, X, Y, num_classes=num_graph_classes,
-                                  epochs=200, batch_size=batch_size, folds=folds, verbose=0)
+                                  epochs=200, batch_size=batch_size, folds=splits, verbose=0)
 
 # preds = classifier.get_predictions(A, X, Y, batch_size=batch_size)
 
