@@ -1,5 +1,21 @@
 # Graph Classifier
 
+### TOC
+
+<!-- vim-markdown-toc GFM -->
+
+* [Example Usage](#example-usage)
+* [Computation](#computation)
+* [Evaluation](#evaluation)
+* [Data Generator](#data-generator)
+* [Experiments](#experiments)
+	* [Experiment Dependencies](#experiment-dependencies)
+	* [Experiment 1: Message Passing Mechanisms](#experiment-1-message-passing-mechanisms)
+	* [Experiment 2: Isomorphism](#experiment-2-isomorphism)
+	* [Experiment 3: Benchmark Against SOA](#experiment-3-benchmark-against-soa)
+
+<!-- vim-markdown-toc -->
+
 ## Example Usage
 
 ```python
@@ -51,7 +67,7 @@ StratifiedKFold:
 
 # Experiments
 
-## Experiment Dependencies
+## Dependencies
 
 Add the following to the classpath:
 - https://github.com/jajupmochi/py-graph
@@ -75,6 +91,7 @@ Observe effect of various matrices for message passing/diffusion.
 - analysis: [analysis/experiment2/analysis.py](analysis/experiment2/analysis.py)
 
 params:
+
 ```python
 num_nodes_per_graph = 50
 num_graph_classes = 5
