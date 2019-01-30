@@ -62,9 +62,9 @@ Observe effect of various matrices for message passing/diffusion.
 ## Experiment 2: Isomorphism
 
 - main (graph classifier): [analysis/eperiment2/IsomorphismExperiment.py](analysis/eperiment2/IsomorphismExperiment.py)
-- main (WL Kernel): [analysis/experiment2/WLKernelExperiment.py](analysis/experiment2/WLKernelExperiment.py)
+- WL Kernel: [analysis/experiment2/WLKernel.py](analysis/experiment2/WLKernel.py)
 - patchy-sans: TODO
-- GCN only: [analysis/experiment2/GCNExperiment.py](analysis/experiment2/GCNExperiment.py)
+- GCN only (with optional sum before dense): [analysis/experiment2/GCNwithOptionalSum.py](analysis/experiment2/GCNwithOptionalSum.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
 - analysis: TODO
 
