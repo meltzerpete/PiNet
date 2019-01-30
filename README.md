@@ -56,7 +56,7 @@ StratifiedKFold:
 Observe effect of various matrices for message passing/diffusion.
 
 - main: [model/ClassificationAccuracyTimeBenchmark.py](model/ClassificationAccuracyTimeBenchmark.py)
-- data: [analysis/experiment1/](analysis/experiment1/)
+- data: [analysis/experiment1/results-2019-01-29.csv](analysis/experiment1/results-2019-01-29.csv)
 - analysis: [analysis/experiment1/bar-charts.py](analysis/experiment1/bar-charts.py)
 
 ## Experiment 2: Isomorphism
