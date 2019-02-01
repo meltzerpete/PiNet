@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 df = pd.read_csv('results-2019-01-30.csv', sep=";")
+df = df.append(pd.read_csv('results-2019-01-31.csv', sep=";"))
+df.sort_values(['classifier', 'exs_per_class'], inplace=True)
 
 plt.title('Isomorphism Test')
 for classifier in set(df['classifier'].values):

@@ -88,7 +88,7 @@ Observe effect of various matrices for message passing/diffusion.
 - patchy-sans: provided by MG
 - GCN only (with optional sum before dense): [analysis/experiment2/GCNWithOptionalSum.py](analysis/experiment2/GCNWithOptionalSum.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
-- analysis: [analysis/experiment2/analysis.py](analysis/experiment2/analysis.py)
+- analysis: [analysis/experiment2/line-graph.py](analysis/experiment2/line-graph.py)
 
 params:
 
