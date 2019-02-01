@@ -55,7 +55,20 @@ class GraphClassifier:
 
     def fit_eval(self, A, X, Y, num_classes, epochs=200, batch_size=50,
                  folds=None, dataset_name='dataset_name', preprocess_A=None, verbose=1):
+        """
 
+        :param A: Adjacency matrices - List of ndarrays
+        :param X: Features matrices - List of ndarrays
+        :param Y: Labels - ndarray (n x 1)
+        :param num_classes: number of classes
+        :param epochs: default 200
+        :param batch_size: default 50
+        :param folds: Folds or splits of train/test ids
+        :param dataset_name: default is 'dataset_name'
+        :param preprocess_A: List of 'add_self_loops', 'sym_normalise_A', 'laplacian', 'sym_norm_laplacian', default: None
+        :param verbose: default is 1
+        :return: Tuple(List of accuracies, List of training times)
+        """
         if verbose > 0:
             print('preprocess A:', preprocess_A)
         A = self._preprocess_A(A, preprocess_A)
