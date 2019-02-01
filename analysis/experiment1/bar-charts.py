@@ -34,6 +34,7 @@ for i, dataset, ylim in zip(plt_positions, df['dataset'].unique(), y_lims):
     for x, y in zip(xticks, data['mean_acc']):
         ax.bar(x, y)
     ax.set_xticks([])
+    ax.minorticks_on()
     ax.set_ylim(ylim)
 
 # legend
