@@ -21,11 +21,15 @@ for dataset in set(datasets):
     ax = fig.add_subplot(111)
     df_dataset_dataset_ = df.loc[df['dataset'] == dataset]
 
-    plt.title(df_dataset_dataset_['pretty_name'].any())
+    title = df_dataset_dataset_['pretty_name'].any()
+    plt.title(title)
 
     xticks = np.arange(len(df_dataset_dataset_))
     plt.bar(xticks, df_dataset_dataset_['mean_acc'])
     plt.xticks(xticks, map(lambda row: row[0] + ("norm'd" if row[1] else ""),
                df_dataset_dataset_[['preprocessA', 'normalise_by_num_nodes']].values),
                rotation=90)
+    plt.yscale('log')
+    plt.tight_layout()
+    plt.savefig(f'{title}-matrices.pdf')
     plt.show()
