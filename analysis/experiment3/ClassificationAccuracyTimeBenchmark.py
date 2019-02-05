@@ -174,7 +174,6 @@ def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_d
 
             for name, weight in zip(names, weights):
                 if weight.shape == (1,):
-                    l_name, w_name = str(name).split('/')
                     print(name, weight)
 
         print_weights = keras.callbacks.LambdaCallback(on_train_end=lambda logs: weights())
@@ -185,7 +184,7 @@ def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_d
         history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
                                       epochs=200,
                                       steps_per_epoch=steps,
-                                      callbacks=[tb_callback, lr_callback, print_weights],
+                                      callbacks=[lr_callback, print_weights],
                                       verbose=0)
 
         train_time = time.time() - start
@@ -220,23 +219,23 @@ def main():
 
         else:
             datasets = {
-                # 'ENZYMES': {
-                #     'preprocess_graph_labels': lambda x: x - 1,
-                #     'classes': 6,
-                # },
+                'ENZYMES': {
+                    'preprocess_graph_labels': lambda x: x - 1,
+                    'classes': 6,
+                },
                 'MUTAG': {},
-                # 'NCI1': {
-                #     'pretty_name': 'NCI-1',
-                # },
-                # 'NCI109': {
-                #     'pretty_name': 'NCI-109',
-                # },
-                # 'PTC_MM': {
-                #     'pretty_name': 'PTC-MM',
-                # },
-                # 'PTC_FM': {
-                #     'pretty_name': 'PTC-FM',
-                # },
+                'NCI1': {
+                    'pretty_name': 'NCI-1',
+                },
+                'NCI109': {
+                    'pretty_name': 'NCI-109',
+                },
+                'PTC_MM': {
+                    'pretty_name': 'PTC-MM',
+                },
+                'PTC_FM': {
+                    'pretty_name': 'PTC-FM',
+                },
                 'PTC_MR': {
                     'pretty_name': 'PTC-MR',
                 },
