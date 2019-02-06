@@ -1,3 +1,4 @@
+#!python
 from keras.callbacks import TerminateOnNaN
 from keras.models import Model
 from math import ceil
@@ -18,6 +19,7 @@ from csv import writer
 import os
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
+import sys
 
 
 # keras.backend.set_session(
@@ -244,6 +246,12 @@ def main():
                 },
             }
             batch_sizes = [50]
+
+            if len(sys.argv) > 1:
+                args = sys.argv[1:]
+                datasets = {
+                    k: v for k, v in map(lambda arg: (arg, datasets[arg]), args)
+                }
 
         out_dim_a2 = 64
         out_dim_x2 = 64
