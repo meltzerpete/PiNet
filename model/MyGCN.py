@@ -42,26 +42,27 @@ class MyGCN(Layer):
         dims = int(A.shape[1])
 
         if self.learn_pqr:
-            p = activations.tanh(10 * self.p)
-            q = activations.tanh(10 * self.q)
+            p = activations.sigmoid(self.p)
+            q = activations.sigmoid(self.q)
             # r = activations.sigmoid(self.r)
-            r = 1 - q
+            # r = 1 - q
             # p = self.p
             # q = self.q
             # r = self.r
 
             I = K.eye(dims)
             pI = p * I
-            Dr = K.pow(K.sum(A, axis=1), -.5)
-            mask = K.tf.is_inf(Dr)
-            D = K.tf.where(mask, K.tf.zeros_like(Dr), Dr)
+            # Dr = K.pow(K.sum(A, axis=1), -.5)
+            Dr = K.sum(A, axis=1)
+            # mask = K.tf.is_inf(Dr)
+            # D = K.tf.where(mask, K.tf.zeros_like(Dr), Dr)
             # print(D.shape)
-            Dr_clean = K.tf.matrix_diag(D)
+            Dr_clean = K.tf.matrix_diag(Dr)
             # print(Dr_clean.shape)
 
-            qDAD = r * K.batch_dot(K.batch_dot(Dr_clean, A), Dr_clean)
+            # qDAD = r * K.batch_dot(K.batch_dot(Dr_clean, A), Dr_clean)
 
-            A_ = pI + q * A + qDAD
+            A_ = p * Dr_clean + q * A
             K.tf.verify_tensor_all_finite(A_, "A_ contains infs")
             K.tf.print(A_)
         else:
