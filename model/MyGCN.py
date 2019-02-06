@@ -51,20 +51,26 @@ class MyGCN(Layer):
             # r = self.r
 
             I = K.eye(dims)
-            pI = p * I
+
             # Dr = K.pow(K.sum(A, axis=1), -.5)
             Dr = K.sum(A, axis=1)
-            # mask = K.tf.is_inf(Dr)
-            # D = K.tf.where(mask, K.tf.zeros_like(Dr), Dr)
-            # print(D.shape)
-            Dr_clean = K.tf.matrix_diag(Dr)
+            # print(K.eval(Dr))
+            k_vec = p * K.ones_like(Dr) + (1 - p) * Dr
+            # print(K.eval(k_vec))
+            k_inv_root = K.pow(K.sqrt(k_vec), -.5)
+            # print(K.eval(k_inv_root))
+            mask = K.tf.is_inf(k_inv_root)
+            # print(K.eval(mask))
+            k_clean = K.tf.where(mask, K.tf.zeros_like(k_inv_root), k_inv_root)
+            # print(K.eval(k_clean))
+
+            D = K.tf.matrix_diag(k_clean)
+            # print(K.eval(D))
             # print(Dr_clean.shape)
 
             # qDAD = r * K.batch_dot(K.batch_dot(Dr_clean, A), Dr_clean)
 
-            A_ = p * Dr_clean + q * A
-            K.tf.verify_tensor_all_finite(A_, "A_ contains infs")
-            K.tf.print(A_)
+            A_ = K.batch_dot(K.batch_dot(D, (A + q * I)), D)
         else:
             A_ = A
 
