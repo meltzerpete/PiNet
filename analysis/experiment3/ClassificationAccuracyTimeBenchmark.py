@@ -1,4 +1,4 @@
-#!python
+#!/bin/bash python
 from keras.callbacks import TerminateOnNaN
 from keras.models import Model
 from math import ceil
