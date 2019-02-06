@@ -225,6 +225,7 @@ def main():
                     'preprocess_graph_labels': lambda x: x - 1,
                     'classes': 6,
                 },
+                'PROTEINS': {},
                 'MUTAG': {},
                 'NCI1': {
                     'pretty_name': 'NCI-1',
