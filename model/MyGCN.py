@@ -28,9 +28,6 @@ class MyGCN(Layer):
             self.q = self.add_weight(name='q',
                                      shape=(1,),
                                      initializer=initializers.constant(0))
-            # self.r = self.add_weight(name='r',
-            #                          shape=(1,),
-            #                          initializer=initializers.constant(.5))
 
         super(MyGCN, self).build(input_shape)
 
