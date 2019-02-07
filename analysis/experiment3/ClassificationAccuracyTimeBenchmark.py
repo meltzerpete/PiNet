@@ -186,7 +186,7 @@ def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_d
         history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
                                       epochs=200,
                                       steps_per_epoch=steps,
-                                      callbacks=[lr_callback, print_weights],
+                                      callbacks=[print_weights],
                                       verbose=0)
 
         train_time = time.time() - start
