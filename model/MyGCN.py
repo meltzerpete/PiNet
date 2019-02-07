@@ -44,31 +44,16 @@ class MyGCN(Layer):
         if self.learn_pqr:
             p = activations.sigmoid(self.p)
             q = activations.sigmoid(self.q)
-            # r = activations.sigmoid(self.r)
-            # r = 1 - q
-            # p = self.p
-            # q = self.q
-            # r = self.r
 
             I = K.eye(dims)
 
-            # Dr = K.pow(K.sum(A, axis=1), -.5)
             Dr = K.sum(A, axis=1)
-            # print(K.eval(Dr))
             k_vec = p * K.ones_like(Dr) + (1 - p) * Dr
-            # print(K.eval(k_vec))
             k_inv_root = K.pow(K.sqrt(k_vec), -.5)
-            # print(K.eval(k_inv_root))
             mask = K.tf.is_inf(k_inv_root)
-            # print(K.eval(mask))
             k_clean = K.tf.where(mask, K.tf.zeros_like(k_inv_root), k_inv_root)
-            # print(K.eval(k_clean))
 
             D = K.tf.matrix_diag(k_clean)
-            # print(K.eval(D))
-            # print(Dr_clean.shape)
-
-            # qDAD = r * K.batch_dot(K.batch_dot(Dr_clean, A), Dr_clean)
 
             A_ = K.batch_dot(K.batch_dot(D, (A + q * I)), D)
         else:
