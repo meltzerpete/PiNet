@@ -100,12 +100,12 @@ def define_model(X, classes, out_dim_a2, out_dim_x2):
     A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
     X_in = Input(X[0].shape, name='X_in')
 
-    x1 = MyGCN(100, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_A1')([A_in, X_in])
-    x1 = MyGCN(out_dim_a2, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_A2')([A_in, x1])
+    x1 = MyGCN(100, activation='relu', learn_pqr=True, name='GCN_A1')([A_in, X_in])
+    x1 = MyGCN(out_dim_a2, activation='relu', learn_pqr=True, name='GCN_A2')([A_in, x1])
     x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
 
-    x2 = MyGCN(100, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_X1')([A_in, X_in])
-    x2 = MyGCN(out_dim_x2, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_X2')([A_in, x2])
+    x2 = MyGCN(100, activation='relu', learn_pqr=True, name='GCN_X1')([A_in, X_in])
+    x2 = MyGCN(out_dim_x2, activation='relu', learn_pqr=True, name='GCN_X2')([A_in, x2])
 
     x3 = Dot(axes=[1, 1])([x1, x2])
     x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)

@@ -6,11 +6,13 @@ from tensorboard import summary
 
 class MyGCN(Layer):
 
-    def __init__(self, output_dim, activation=activations.relu, learn_pqr=False, **kwargs):
+    def __init__(self, output_dim, activation=activations.relu, learn_pqr=False, p=None, q=None, **kwargs):
         self.units = output_dim
         super(MyGCN, self).__init__(**kwargs)
         self.activation = activations.get(activation)
         self.learn_pqr = learn_pqr
+        self.p = p
+        self.q = q
 
     def build(self, input_shape):
         self.kernel = self.add_weight(name='kernel',
@@ -28,6 +30,7 @@ class MyGCN(Layer):
             self.q = self.add_weight(name='q',
                                      shape=(1,),
                                      initializer=initializers.constant(0))
+            # self.trainable_weights = [self.p, self.q]
 
         super(MyGCN, self).build(input_shape)
 
@@ -41,10 +44,15 @@ class MyGCN(Layer):
         if self.learn_pqr:
             p = activations.sigmoid(self.p)
             q = activations.sigmoid(self.q)
+            # p = self.p
+            # q = self.q
 
             I = K.eye(dims)
 
             Dr = K.sum(A, axis=1)
+            # print(Dr.shape)
+            Dr_diag_sum = K.sum(K.tf.matrix_diag(Dr), axis=0)
+            I = K.tf.where(K.equal(Dr_diag_sum, K.tf.zeros_like(Dr_diag_sum)), K.tf.zeros_like(Dr_diag_sum), I)
             k_vec = p * K.ones_like(Dr) + (1 - p) * Dr
             k_inv_root = K.pow(K.sqrt(k_vec), -.5)
             mask = K.tf.is_inf(k_inv_root)
