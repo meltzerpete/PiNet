@@ -1,4 +1,5 @@
 #!/opt/conda/bin/python
+from keras.activations import sigmoid, softmax
 from keras.callbacks import TerminateOnNaN
 from keras.models import Model
 from math import ceil
@@ -9,7 +10,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from scipy.sparse import csr_matrix
-from keras.layers import Input, Dot, Reshape, Dense, Dropout
+from keras.layers import Input, Dot, Reshape, Dense, Dropout, Lambda
 from keras.optimizers import Adam
 from model.MyGCN import MyGCN
 import keras
@@ -17,6 +18,7 @@ import pickle
 import time
 from csv import writer
 import os
+import keras.backend as K
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 import sys
@@ -88,14 +90,22 @@ def get_data(dropbox_name, normalise_by_num_nodes=False):
 
 
 def define_model(X, classes, out_dim_a2, out_dim_x2):
+
+    px = K.variable(0, name='px')
+    qx = K.variable(0, name='qx')
+
+    pa = K.variable(0.0, name='pa')
+    qa = K.variable(0.0, name='qa')
+
     A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
     X_in = Input(X[0].shape, name='X_in')
 
-    x1 = MyGCN(100, activation='relu', learn_pqr=True, name='GCN_A1')([A_in, X_in])
-    x1 = MyGCN(out_dim_a2, activation='softmax', learn_pqr=True, name='GCN_A2')([A_in, x1])
+    x1 = MyGCN(100, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_A1')([A_in, X_in])
+    x1 = MyGCN(out_dim_a2, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_A2')([A_in, x1])
+    x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
 
-    x2 = MyGCN(100, activation='relu', learn_pqr=True, name='GCN_X1')([A_in, X_in])
-    x2 = MyGCN(out_dim_x2, activation='relu', learn_pqr=True, name='GCN_X2')([A_in, x2])
+    x2 = MyGCN(100, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_X1')([A_in, X_in])
+    x2 = MyGCN(out_dim_x2, activation='relu', learn_pqr=False, p=px, q=qx, name='GCN_X2')([A_in, x2])
 
     x3 = Dot(axes=[1, 1])([x1, x2])
     x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)
@@ -175,7 +185,7 @@ def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_d
             weights = model.get_weights()
 
             for name, weight in zip(names, weights):
-                if weight.shape == (1,):
+                if weight.shape == (1,) or len(weight.shape) == 0:
                     print(name, weight)
 
         print_weights = keras.callbacks.LambdaCallback(on_train_end=lambda logs: weights())
@@ -221,18 +231,18 @@ def main():
 
         else:
             datasets = {
-                'ENZYMES': {
-                    'preprocess_graph_labels': lambda x: x - 1,
-                    'classes': 6,
-                },
-                'PROTEINS': {},
+                # 'ENZYMES': {
+                #     'preprocess_graph_labels': lambda x: x - 1,
+                #     'classes': 6,
+                # },
+                # 'PROTEINS': {},
                 'MUTAG': {},
                 'NCI1': {
                     'pretty_name': 'NCI-1',
                 },
-                'NCI109': {
-                    'pretty_name': 'NCI-109',
-                },
+                # 'NCI109': {
+                #     'pretty_name': 'NCI-109',
+                # },
                 'PTC_MM': {
                     'pretty_name': 'PTC-MM',
                 },
