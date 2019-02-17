@@ -2,8 +2,10 @@ import time
 from math import ceil
 
 import keras
+import keras.backend as K
 import numpy as np
-from keras.layers import Input, Dot, Reshape, Dense
+from keras.activations import softmax
+from keras.layers import Input, Dot, Reshape, Dense, Lambda
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.utils import to_categorical
@@ -83,7 +85,7 @@ class GraphClassifier:
             A_test, A_train, X_test, X_train, Y_test, Y_train \
                 = self._split_test_train(A, X, Y, train_idx, val_idx)
 
-            self._model = self._define_model(X_shape=X.shape[1:], num_classes=num_classes)
+            self._model = self._define_model(X_shape=X[0].shape, num_classes=num_classes)
             self._model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
             # model.summary()
 
@@ -155,7 +157,8 @@ class GraphClassifier:
         X_in = Input(X_shape, name='X_in')
 
         x1 = MyGCN(100, activation='relu')([A_in, X_in])
-        x1 = MyGCN(self._out_dim_a2, activation='softmax')([A_in, x1])
+        x1 = MyGCN(self._out_dim_a2, activation='relu')([A_in, x1])
+        x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
 
         x2 = MyGCN(100, activation='relu')([A_in, X_in])
         x2 = MyGCN(self._out_dim_x2, activation='relu')([A_in, x2])

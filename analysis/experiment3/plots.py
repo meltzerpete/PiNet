@@ -25,6 +25,11 @@ exps = {
         'data': 'result3.csv',
         'title': '$(p I + (1 - p) D)^{-\\frac{1}{2}} (A + qI) (p I + (1 - p) D)^{-\\frac{1}{2}}$\n(No LR Decay)',
     },
+    4: {
+        'data': 'result4.csv',
+        'title': '$(p I + (1 - p) D)^{-\\frac{1}{2}} (A + qI) (p I + (1 - p) D)^{-\\frac{1}{2}}$\n'
+                 + '(No LR Decay)\nI filled with 0 to match size of graph',
+    },
 }
 
 
