@@ -13,7 +13,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from ImportData import DropboxLoader
 from model.GCNWithOptionalSum import GCNWithOptionalSum
 from model.GraphClassifier import GraphClassifier
-from model.WLKernel import WLKernel
+#from model.WLKernel import WLKernel
 
 
 class Benchmark(object):
@@ -32,26 +32,26 @@ class Benchmark(object):
     def main(self):
 
         datasets = {
-            # 'MUTAG': {},
-            # 'NCI1': {
-            #     'pretty_name': 'NCI-1',
-            # },
-            # 'NCI109': {
-            #     'pretty_name': 'NCI-109',
-            # },
-            # 'PTC_MM': {
-            #     'pretty_name': 'PTC-MM',
-            # },
-            # 'PTC_FM': {
-            #     'pretty_name': 'PTC-FM',
-            # },
-            # 'PTC_MR': {
-            #     'pretty_name': 'PTC-MR',
-            # },
-            # 'PTC_FR': {
-            #     'pretty_name': 'PTC-FR',
-            # },
+            'MUTAG': {},
+            'PTC_MM': {
+                'pretty_name': 'PTC-MM',
+            },
+            'PTC_FM': {
+                'pretty_name': 'PTC-FM',
+            },
+            'PTC_MR': {
+                'pretty_name': 'PTC-MR',
+            },
+            'PTC_FR': {
+                'pretty_name': 'PTC-FR',
+            },
             'PROTEINS': {},
+            'NCI1': {
+                'pretty_name': 'NCI-1',
+            },
+            'NCI109': {
+                'pretty_name': 'NCI-109',
+            },
         }
 
         if len(sys.argv) > 1:
