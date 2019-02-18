@@ -32,25 +32,25 @@ class Benchmark(object):
     def main(self):
 
         datasets = {
-            'MUTAG': {},
-            'NCI1': {
-                'pretty_name': 'NCI-1',
-            },
-            'NCI109': {
-                'pretty_name': 'NCI-109',
-            },
-            'PTC_MM': {
-                'pretty_name': 'PTC-MM',
-            },
-            'PTC_FM': {
-                'pretty_name': 'PTC-FM',
-            },
-            'PTC_MR': {
-                'pretty_name': 'PTC-MR',
-            },
-            'PTC_FR': {
-                'pretty_name': 'PTC-FR',
-            },
+            # 'MUTAG': {},
+            # 'NCI1': {
+            #     'pretty_name': 'NCI-1',
+            # },
+            # 'NCI109': {
+            #     'pretty_name': 'NCI-109',
+            # },
+            # 'PTC_MM': {
+            #     'pretty_name': 'PTC-MM',
+            # },
+            # 'PTC_FM': {
+            #     'pretty_name': 'PTC-FM',
+            # },
+            # 'PTC_MR': {
+            #     'pretty_name': 'PTC-MR',
+            # },
+            # 'PTC_FR': {
+            #     'pretty_name': 'PTC-FR',
+            # },
             'PROTEINS': {},
         }
 
@@ -79,7 +79,7 @@ class Benchmark(object):
                 ["classifier", "dataset", "pretty_name", "mean_acc", "acc_std",
                  "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
-            classifiers = [WLKernel(), self, GCNWithOptionalSum(False), GCNWithOptionalSum(True)]
+            classifiers = [self]
 
             # generate data
             A, X, Y = get_data(dropbox_name)
