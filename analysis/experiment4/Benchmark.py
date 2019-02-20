@@ -13,7 +13,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from ImportData import DropboxLoader
 from model.GCNWithOptionalSum import GCNWithOptionalSum
 from model.GraphClassifier import GraphClassifier
-#from model.WLKernel import WLKernel
+from model.WLKernel import WLKernel
 
 
 class Benchmark(object):

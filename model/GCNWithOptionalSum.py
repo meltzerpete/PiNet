@@ -59,8 +59,8 @@ class GCNWithOptionalSum:
             stats = model.evaluate_generator(
                 GraphClassifier().batch_generator([A_test, X_test], y_test, batch_size), y_test.shape[0] / batch_size)
 
-            # for metric, val in zip(model.metrics_names, stats):
-            #     print(metric + ": ", val)
+            for metric, val in zip(model.metrics_names, stats):
+                print(metric + ": ", val)
 
             accuracies.append(stats[1])
             times.append(train_time)

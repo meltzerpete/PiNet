@@ -6,7 +6,11 @@ df = df.append(pd.read_csv('results-2019-01-31.csv', sep=";"))
 df.sort_values(['classifier', 'exs_per_class'], inplace=True)
 
 plt.title('Isomorphism Test')
-for classifier in set(df['classifier'].values):
+cs = list(set(df['classifier'].values))
+cs.remove('PiNet')
+cs.sort()
+cs.insert(0, 'PiNet')
+for classifier in cs:
 
     data = df.loc[df['classifier'] == classifier]
     plt.plot(data['exs_per_class'], data['mean_acc'], '--x', label=classifier)
