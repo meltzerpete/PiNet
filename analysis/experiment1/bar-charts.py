@@ -17,10 +17,11 @@ df = df.append(ptc, sort=False)
 df.sort_values(['dataset', 'preprocessA'], inplace=True)
 
 df = df.loc[df['dataset'] != 'ENZYMES']
+df.drop(df[df['preprocessA'].str.contains('laplacian')].index, inplace=True)
 
 fig, axes = plt.subplots(3, 2, sharex='col', sharey='none')
 plt_positions = [(0, 0), (1, 0), (2, 0), (1, 1), (2, 1)]
-y_lims = [(.675, .88), (.7, .75), (.68, .74), (.72, .75), (.605, .635)]
+y_lims = [(.825, .895), (.7, .75), (.68, .74), (.72, .76), (.605, .635)]
 
 for i, dataset, ylim in zip(plt_positions, df['dataset'].unique(), y_lims):
     print(i, dataset, ylim)
@@ -40,9 +41,18 @@ for i, dataset, ylim in zip(plt_positions, df['dataset'].unique(), y_lims):
 # legend
 lines = [Line2D([0], [0], color=c) for c in ['blue', 'orange', 'green', 'red', 'purple', 'brown']]
 axes[0, 1].axis('off')
-axes[0, 1].legend(lines, ['Sym_norm(A + I)', 'A + I', 'L', 'Sym_norm(L)', 'Sym_norm(A)', 'A'], loc='center')
+axes[0, 1].legend(lines, ['Sym_norm(A + I)', 'A + I', 'Sym_norm(A)', 'A', 'Learn $p$ and $q$'], loc='center')
 
 fig.suptitle('Message Passing Matrix vs. Mean Classification Accuracy')
 fig.tight_layout(rect=[0, 0, 1, 0.95])
 fig.savefig('all-matrices.pdf')
 fig.show()
+
+df = df.reset_index()
+
+for dataset in df['dataset'].unique():
+    d = df.loc[df['dataset'] == dataset]
+    idxmax = d['mean_acc'].idxmax()
+    print(idxmax)
+    matrix = df['preprocessA'].iloc[idxmax]
+    print(dataset, matrix, f'{df["mean_acc"].iloc[idxmax]:.2f}', '+/-', f'{df["acc_std"].iloc[idxmax]:.2f}')
