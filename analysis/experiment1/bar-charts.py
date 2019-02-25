@@ -21,7 +21,7 @@ df.drop(df[df['preprocessA'].str.contains('laplacian')].index, inplace=True)
 
 fig, axes = plt.subplots(3, 2, sharex='col', sharey='none')
 plt_positions = [(0, 0), (1, 0), (2, 0), (1, 1), (2, 1)]
-y_lims = [(.825, .895), (.7, .75), (.68, .74), (.72, .76), (.605, .635)]
+y_lims = [(.825, .895), (.7, .75), (.68, .74), (.73, .76), (.605, .635)]
 
 for i, dataset, ylim in zip(plt_positions, df['dataset'].unique(), y_lims):
     print(i, dataset, ylim)
@@ -38,13 +38,20 @@ for i, dataset, ylim in zip(plt_positions, df['dataset'].unique(), y_lims):
     ax.minorticks_on()
     ax.set_ylim(ylim)
 
+    # mean classification of manual search space
+    manData = data.drop(data[data['preprocessA'].str.contains('PQ')].index)
+    manMean = manData['mean_acc'].mean()
+    ax.plot([-.5, len(manData) + 0.5], [manMean] * 2, '--', color='black', alpha=.5)
+
+
 # legend
 lines = [Line2D([0], [0], color=c) for c in ['blue', 'orange', 'green', 'red', 'purple', 'brown']]
 axes[0, 1].axis('off')
 axes[0, 1].legend(lines, ['Sym_norm(A + I)', 'A + I', 'Sym_norm(A)', 'A', 'Learn $p$ and $q$'], loc='center')
 
 fig.suptitle('Message Passing Matrix vs. Mean Classification Accuracy')
-fig.tight_layout(rect=[0, 0, 1, 0.95])
+fig.tight_layout(rect=[0, -0.02, 1, 0.95])
+# fig.set_figheight(.9 * fig.get_figheight())
 fig.savefig('all-matrices.pdf')
 fig.show()
 
