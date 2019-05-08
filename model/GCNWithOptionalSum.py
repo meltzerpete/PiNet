@@ -6,9 +6,9 @@ from keras import backend as K
 from keras.layers import Dense, Flatten, Lambda
 from keras.models import Input
 from keras.optimizers import Adam
+from keras.utils import to_categorical
 from scipy.sparse import csr_matrix
 
-from model.ClassificationAccuracyTimeBenchmark import split_test_train
 from model.GraphClassifier import GraphClassifier
 from model.MyGCN import MyGCN
 
@@ -25,6 +25,18 @@ class GCNWithOptionalSum:
     def get_accuracies(self, A, X, Y, num_graph_classes, splits=None, batch_size=None):
         return self.get_accs_times(A, X, Y, num_graph_classes, splits, batch_size)[0]
 
+    def split_test_train(self, A_list, X, Y, train_idx, val_idx):
+        A_test = np.array([A_list[i] for i in val_idx])
+        A_train = np.array([A_list[i] for i in train_idx])
+
+        X_test = np.array([X[i] for i in val_idx])
+        X_train = np.array([X[i] for i in train_idx])
+
+        Y_test = to_categorical(Y)[val_idx]
+        Y_train = to_categorical(Y)[train_idx]
+
+        return A_test, A_train, X_test, X_train, Y_test, Y_train
+
     def get_accs_times(self, A, X, y, num_graph_classes, splits=None, batch_size=50):
 
         A = map(csr_matrix.todense, A)
@@ -36,7 +48,7 @@ class GCNWithOptionalSum:
         times = []
         for train_idx, val_idx in iter(splits):
             A_test, A_train, X_test, X_train, y_test, y_train \
-                = split_test_train(A, X, y, train_idx, val_idx)
+                = self.split_test_train(A, X, y, train_idx, val_idx)
 
             A_in = Input((A[0].shape[0], A[0].shape[1]), name='A_in')
             X_in = Input(X[0].shape, name='X_in')
