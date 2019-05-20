@@ -39,6 +39,7 @@ class GCNWithOptionalSum:
 
     def get_accs_times(self, A, X, y, num_graph_classes, splits=None, batch_size=50):
 
+        A = map(csr_matrix, A)
         A = map(csr_matrix.todense, A)
         A = map(self._add_self_loops, A)
         A = map(self._sym_normalise_A, A)
