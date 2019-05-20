@@ -2,12 +2,7 @@ from keras import backend as K
 
 
 def gather_neighbour_features(A, X, i):
-    row = A[i]
-    neighbours_mask = K.not_equal(row, K.zeros_like(row))
-    has_neighbours = K.any(neighbours_mask)
-    # print("has_neighbours", has_neighbours)
-
-    def true_fn():
+    def true_fn(X, neighbours_mask):
         # node has neighbours
         neighbours_idx = K.tf.where(neighbours_mask)
         # print("where", neighbours_idx)
@@ -15,40 +10,32 @@ def gather_neighbour_features(A, X, i):
         # print("gather", gather)
         return gather
 
-    def false_fn():
+    def false_fn(X):
         # node has no neighbours
         return K.zeros((1, X.shape[-1]), dtype='int64')
 
-    gathered = K.tf.cond(has_neighbours,
-                         true_fn=true_fn,
-                         false_fn=false_fn)
-    # print(gathered)
-    return gathered
+    row = A[i]
+    neighbours_mask = K.not_equal(row, K.zeros_like(row))
+    has_neighbours = K.any(neighbours_mask)
+    return K.tf.cond(has_neighbours,
+                     true_fn=lambda: true_fn(X, neighbours_mask),
+                     false_fn=lambda: false_fn(X))
 
 
 def sample_neighbour_features(X, num_samples):
-    # print(X.shape)
-    num_rows = K.tf.shape(X)[0]
-
     def true_fn(X):
-        # print("X\n", X)
         zeros = K.zeros((num_samples, 1, X.shape[-1]), dtype='int64')
-        add = K.tf.add(zeros, X)
-        return add
+        return K.tf.add(zeros, X)
 
     def false_fn(X):
-        # print("X\n", X)
         idx = K.arange(num_rows)
         shuffled_idx = K.tf.random_shuffle(idx)
-        # print(shuffled_idx)
-        gather = K.gather(X, shuffled_idx[:num_samples])
-        return gather
+        return K.gather(X, shuffled_idx[:num_samples])
 
-    ret = K.tf.cond(num_rows <= num_samples,
-                    true_fn=lambda: true_fn(X),
-                    false_fn=lambda: false_fn(X))
-    # print("ret", ret)
-    return ret
+    num_rows = K.tf.shape(X)[0]
+    return K.tf.cond(num_rows <= num_samples,
+                     true_fn=lambda: true_fn(X),
+                     false_fn=lambda: false_fn(X))
 
 
 def aggregate_neighbour_features(X):
