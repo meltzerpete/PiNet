@@ -19,7 +19,7 @@ class IsomorphismExperiment(object):
 
         accs, times = classifier.fit_eval(A, X, Y, num_classes=num_graph_classes,
                                           epochs=200, batch_size=batch_size, folds=splits,
-                                          preprocess_A=None, verbose=0)
+                                          preprocess_A=None, verbose=1)
         return accs
 
     def main(self):
@@ -35,7 +35,7 @@ class IsomorphismExperiment(object):
         batch_size = 5
         examples_per_classes = [18, 20]
 
-        classifiers = [WLKernel(), GCNWithOptionalSum(True), GCNWithOptionalSum(False)]
+        classifiers = [WLKernel(), GCNWithOptionalSum(True), GCNWithOptionalSum(False), self]
 
         # generate data
         A, X, Y = generate.get_tensors(num_nodes_per_graph,

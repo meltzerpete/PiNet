@@ -1,0 +1,7 @@
+keras
+tensorflow
+/home/pete/Dropbox/PycharmProjects/pygamma
+/home/pete/Dropbox/PycharmProjects/py-graph
+tensorboard
+tqdm
+matplotlib
