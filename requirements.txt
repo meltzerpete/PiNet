@@ -7,3 +7,5 @@ tensorboard
 tqdm
 matplotlib
 scipy
+pandas
+networkx
