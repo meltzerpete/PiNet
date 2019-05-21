@@ -5,14 +5,11 @@ def gather_neighbour_features(A, X, i):
     def true_fn(X, neighbours_mask):
         # node has neighbours
         neighbours_idx = K.tf.where(neighbours_mask)
-        # print("where", neighbours_idx)
-        gather = K.gather(X, neighbours_idx)
-        # print("gather", gather)
-        return gather
+        return K.gather(X, neighbours_idx)
 
     def false_fn(X):
         # node has no neighbours
-        return K.zeros((1, X.shape[-1]), dtype='int64')
+        return K.tf.zeros((1, 1, K.tf.shape(X)[-1]), dtype='int64')
 
     row = A[i]
     neighbours_mask = K.not_equal(row, K.zeros_like(row))
@@ -23,31 +20,31 @@ def gather_neighbour_features(A, X, i):
 
 
 def sample_neighbour_features(X, num_samples):
-    def true_fn(X):
-        zeros = K.zeros((num_samples, 1, X.shape[-1]), dtype='int64')
-        return K.tf.add(zeros, X)
+    def true_fn(X, num_samples):
+        num_rows = K.tf.shape(X)[0]
+        diff = num_samples - num_rows
+        pad = K.tf.pad(X, ((0, diff), (0, 0), (0, 0)))
+        return pad
 
-    def false_fn(X):
+    def false_fn(X, num_samples, num_rows):
         idx = K.arange(num_rows)
         shuffled_idx = K.tf.random_shuffle(idx)
         return K.gather(X, shuffled_idx[:num_samples])
 
     num_rows = K.tf.shape(X)[0]
     return K.tf.cond(num_rows <= num_samples,
-                     true_fn=lambda: true_fn(X),
-                     false_fn=lambda: false_fn(X))
+                     true_fn=lambda: true_fn(X, num_samples),
+                     false_fn=lambda: false_fn(X, num_samples, num_rows))
 
 
 def aggregate_neighbour_features(X):
     # must return 1 row
-    print("X\n", X)
-    print("MAX:\n", K.max(X, axis=0))
     return K.max(X, axis=0)
 
 
-def sample_and_aggregate_neighbours_features(A, X, i):
+def sample_and_aggregate_neighbours_features(A, X, num_samples, i):
     gathered = gather_neighbour_features(A, X, i)
-    sampled = sample_neighbour_features(gathered, 2)
+    sampled = sample_neighbour_features(gathered, num_samples)
     aggregated = aggregate_neighbour_features(sampled)
     return aggregated
 
@@ -63,20 +60,29 @@ def main():
          [30, 31],
          [40, 41]]
 
-    K.tf.enable_eager_execution()
+    if EAGER:
+        K.tf.enable_eager_execution()
+        Variable = K.tf.contrib.eager.Variable
+    else:
+        Variable = K.tf.Variable
 
-    A = K.tf.Variable(A, dtype='int64')
-    X = K.tf.Variable(X, dtype='int64')
+    A = Variable(A, dtype='int64')
+    X = Variable(X, dtype='int64')
+    N = Variable(2, dtype='int32')
 
-    # print("A.shape", A.shape)
-    # print("X.shape", X.shape)
+    out = K.tf.map_fn(lambda i: sample_and_aggregate_neighbours_features(A, X, N, i),
+                      K.arange(0, K.tf.shape(A)[-1], 1, dtype='int64'))
+    out = K.reshape(out, (4, 2))
 
-    # AGG
-    n = K.arange(0, 4, 1, dtype='int64')
-    out = K.tf.map_fn(lambda i: sample_and_aggregate_neighbours_features(A, X, i),
-                      n, infer_shape=False)
-    print("out", out)
+    if EAGER:
+        print("out", out)
+    else:
+        print("X\n", K.eval(X))
+        k_eval = K.eval(out)
+        print("out\n", k_eval)
+        print(k_eval.shape)
 
 
+EAGER = False
 if __name__ == '__main__':
     main()
