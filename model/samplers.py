@@ -1,3 +1,4 @@
+import tensorflow as tf
 from keras import backend as K
 
 
@@ -21,12 +22,14 @@ def gather_neighbour_features(A, X, i):
 
 def sample_neighbour_features(X, num_samples):
     def true_fn(X, num_samples):
+        # not enough neighbours -> pad
         num_rows = K.tf.shape(X)[0]
         diff = num_samples - num_rows
         pad = K.tf.pad(X, ((0, diff), (0, 0), (0, 0)))
         return pad
 
     def false_fn(X, num_samples, num_rows):
+        # too many neighbours -> sample uniform random
         idx = K.arange(num_rows)
         shuffled_idx = K.tf.random_shuffle(idx)
         return K.gather(X, shuffled_idx[:num_samples])
@@ -50,10 +53,13 @@ def sample_and_aggregate_neighbours_features(A, X, num_samples, i):
 
 
 def main():
+    sess = tf.Session()
+    K.set_session(sess)
+
     A = [[1, 1, 1, 1],
          [1, 1, 1, 0],
          [1, 1, 0, 0],
-         [0, 0, 0, 0]]
+         [0, 0, 0, 1]]
 
     X = [[10, 11],
          [20, 21],
@@ -62,13 +68,13 @@ def main():
 
     if EAGER:
         K.tf.enable_eager_execution()
-        Variable = K.tf.contrib.eager.Variable
+        var = K.tf.contrib.eager.Variable
     else:
-        Variable = K.tf.Variable
+        var = K.tf.Variable
 
-    A = Variable(A, dtype='int64')
-    X = Variable(X, dtype='int64')
-    N = Variable(2, dtype='int32')
+    A = var(A, dtype='int64', name='A_Adjacency_Matrix')
+    X = var(X, dtype='int64', name='X_Features')
+    N = var(2, dtype='int32', name='num_samples_per_node')
 
     out = K.tf.map_fn(lambda i: sample_and_aggregate_neighbours_features(A, X, N, i),
                       K.arange(0, K.tf.shape(A)[-1], 1, dtype='int64'))
