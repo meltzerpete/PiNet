@@ -11,6 +11,7 @@ class GraphSAGELayer(Layer):
                  neighbourhood_sampler,
                  n_neighbour_samples_per_node,
                  output_dim,
+                 num_nodes,
                  activation=activations.relu,
                  **kwargs):
         super(GraphSAGELayer, self).__init__(**kwargs)
@@ -19,6 +20,7 @@ class GraphSAGELayer(Layer):
         self.n_neighbour_samples_per_node = n_neighbour_samples_per_node
         self.output_dim = output_dim
         self.activation = activation
+        self.num_nodes = num_nodes
 
     def build(self, input_shape):
         # self.kernel = self.add_weight(name='kernel')
@@ -42,7 +44,7 @@ class GraphSAGELayer(Layer):
 
         out = K.tf.map_fn(
             lambda i: self.per_A_X(slice_sparse_matrix(A, i), slice_matrix(X, i)),
-            K.arange(0, 188, 1), infer_shape=False, dtype=K.dtype(X))
+            K.arange(0, K.tf.shape(X)[0], 1), infer_shape=False, dtype=K.dtype(X))
 
         return out
 
@@ -54,9 +56,9 @@ class GraphSAGELayer(Layer):
 
         out = K.tf.map_fn(lambda i: self._sample_and_aggregate_neighbours_features(slice_row(A, i), X,
                                                                                    self.n_neighbour_samples_per_node),
-                          K.arange(0, 28, 1), infer_shape=False, dtype=K.dtype(X))
+                          K.arange(0, self.num_nodes, 1), infer_shape=False, dtype=K.dtype(X))
 
-        out = K.tf.reshape(out, (28, 7))
+        out = K.tf.reshape(out, (self.num_nodes, K.tf.shape(X)[-1]))
         return out
 
     def compute_output_shape(self, input_shape):
@@ -65,7 +67,7 @@ class GraphSAGELayer(Layer):
     @staticmethod
     def _sample_and_aggregate_neighbours_features(row, X, num_samples):
         row = K.tf.sparse.to_dense(row)
-        reshaped = K.tf.reshape(row, [28])
+        reshaped = K.tf.reshape(row, [K.tf.shape(X)[-2]])
         gathered = GraphSAGELayer._gather_neighbour_features(reshaped, X)
         sampled = GraphSAGELayer._sample_neighbour_features(gathered, num_samples)
         aggregated = GraphSAGELayer._aggregate_neighbour_features(sampled)
