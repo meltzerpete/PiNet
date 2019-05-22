@@ -6,10 +6,17 @@ from tensorboard import summary
 
 class GraphSAGELayer(Layer):
 
-    def __init__(self, aggregator, neighbourhood_sampler, output_dim, activation=activations.relu, **kwargs):
+    def __init__(self,
+                 aggregator,
+                 neighbourhood_sampler,
+                 n_neighbour_samples_per_node,
+                 output_dim,
+                 activation=activations.relu,
+                 **kwargs):
         super(GraphSAGELayer, self).__init__(**kwargs)
         self.aggregator = aggregator
         self.neighbourhood_sampler = neighbourhood_sampler
+        self.n_neighbour_samples_per_node = n_neighbour_samples_per_node
         self.output_dim = output_dim
         self.activation = activation
 
@@ -20,17 +27,90 @@ class GraphSAGELayer(Layer):
     def call(self, inputs, **kwargs):
         A, X = inputs
 
-        # aggregate features
-        # h_N = self.aggregator(self.neighbourhood_sampler)
-        h_N = X
+        def slice_sparse_matrix(all_A, i):
+            n = K.tf.shape(all_A)[-1]
+            ret = K.tf.sparse.slice(all_A, (i, 0, 0), (1, n, n))
+            reshaped = K.tf.sparse_reshape(ret, [n, n])
+            return reshaped
 
-        # concat
-        h_v = K.concatenate((X, h_N), axis=-1)
-        print(h_v.shape)
+        def slice_matrix(all_X, i):
+            n = K.tf.shape(X)[1]
+            m = K.tf.shape(X)[2]
+            slice = K.tf.slice(all_X, (i, 0, 0), (1, n, m))
+            reshaped = K.tf.reshape(slice, [n, m])
+            return reshaped
 
-        # apply dense layer
-        # regularise
-        return X
+        out = K.tf.map_fn(
+            lambda i: self.per_A_X(slice_sparse_matrix(A, i), slice_matrix(X, i)),
+            K.arange(0, 188, 1), infer_shape=False, dtype=K.dtype(X))
+
+        return out
+
+    def per_A_X(self, A, X):
+        def slice_row(A, i):
+            n = K.tf.shape(A)[-1]
+            ret = K.tf.sparse.slice(A, (i, 0), (1, n))
+            return ret
+
+        out = K.tf.map_fn(lambda i: self._sample_and_aggregate_neighbours_features(slice_row(A, i), X,
+                                                                                   self.n_neighbour_samples_per_node),
+                          K.arange(0, 28, 1), infer_shape=False, dtype=K.dtype(X))
+
+        out = K.tf.reshape(out, (28, 7))
+        return out
 
     def compute_output_shape(self, input_shape):
-        return input_shape
+        return input_shape[1]
+
+    @staticmethod
+    def _sample_and_aggregate_neighbours_features(row, X, num_samples):
+        row = K.tf.sparse.to_dense(row)
+        reshaped = K.tf.reshape(row, [28])
+        gathered = GraphSAGELayer._gather_neighbour_features(reshaped, X)
+        sampled = GraphSAGELayer._sample_neighbour_features(gathered, num_samples)
+        aggregated = GraphSAGELayer._aggregate_neighbour_features(sampled)
+        return aggregated
+
+    @staticmethod
+    def _gather_neighbour_features(adj_row, X_full):
+        def true_fn(X_full, neighbours_mask):
+            # node has neighbours
+            neighbours_idx = K.tf.where(neighbours_mask)
+            ret = K.tf.gather(X_full, neighbours_idx)
+            return ret
+
+        def false_fn(X_full):
+            # node has no neighbours
+            ret = K.tf.zeros((1, 1, K.tf.shape(X_full)[-1]), dtype=K.dtype(X_full))
+            return ret
+
+        neighbours_mask = K.tf.not_equal(adj_row, K.tf.zeros_like(adj_row))
+        has_neighbours = K.tf.reduce_any(neighbours_mask)
+        return K.tf.cond(has_neighbours,
+                         true_fn=lambda: true_fn(X_full, neighbours_mask),
+                         false_fn=lambda: false_fn(X_full))
+
+    @staticmethod
+    def _sample_neighbour_features(X_neighbours, num_samples):
+        def true_fn(X, num_samples):
+            # not enough neighbours -> pad
+            num_rows = K.tf.shape(X)[0]
+            diff = num_samples - num_rows
+            pad = K.tf.pad(X, ((0, diff), (0, 0), (0, 0)))
+            return pad
+
+        def false_fn(X, num_samples, num_rows):
+            # too many neighbours -> sample uniform random
+            idx = K.arange(num_rows)
+            shuffled_idx = K.tf.random_shuffle(idx)
+            return K.tf.gather(X, shuffled_idx[:num_samples])
+
+        num_rows = K.tf.shape(X_neighbours)[0]
+        return K.tf.cond(num_rows <= num_samples,
+                         true_fn=lambda: true_fn(X_neighbours, num_samples),
+                         false_fn=lambda: false_fn(X_neighbours, num_samples, num_rows))
+
+    @staticmethod
+    def _aggregate_neighbour_features(X):
+        # must return 1 row
+        return K.max(X, axis=0)

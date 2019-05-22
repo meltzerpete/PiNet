@@ -2,10 +2,11 @@ import numpy as np
 
 from model.GraphSAGELayer import GraphSAGELayer
 from utils.graphs import get_data
+from scipy.sparse import csr_matrix
 
 import keras
 import keras.backend as K
-import numpy as np
+import tensorflow as tf
 from keras.activations import softmax
 from keras.layers import Input, Dot, Reshape, Dense, Lambda
 from keras.models import Model
@@ -13,27 +14,48 @@ from keras.optimizers import Adam
 
 A, X, Y = get_data('MUTAG')
 
-X = np.array(X)
+shape = (len(A), A[0].shape[-1], A[0].shape[-1])
+indices = []
+values = []
 
-A_in = Input(A[0].shape, name='A_in')
-X_in = Input(X[0].shape, name='X_in')
+for i, a in enumerate(A):
+    print(i)
+    a = csr_matrix.tocoo(a)
+    i_arr = np.repeat(i, a.row.shape)
+    inds = np.stack([i_arr, a.row, a.col], axis=1)
+    indices.append(inds)
+    values.append(a.data)
 
-h = GraphSAGELayer(None, None, 10, activation=softmax)([A_in, X_in])
+indices = np.concatenate(indices)
+values = np.concatenate(values)
 
-model = Model(inputs=[A_in, X_in], outputs=h)
+# K.tf.enable_eager_execution()
 
-# model.compile(Adam)
+A = K.tf.SparseTensor(indices, values, shape)
+x = tf.convert_to_tensor(np.array(X))
 
+A_in = Input(name='A_in', tensor=tf.cast(A, 'float32'))
+X_in = Input(name='X_in', tensor=tf.cast(x, 'float32'))
+
+h = GraphSAGELayer(aggregator=None,
+                   neighbourhood_sampler=None,
+                   n_neighbour_samples_per_node=2,
+                   output_dim=10,
+                   activation=softmax,
+                   name='gs')([A_in, X_in])
+
+reshape = keras.layers.Reshape([28*7])(h)
+out = keras.layers.Dense(2, activation=keras.activations.softmax, dtype='float64')(reshape)
+
+model = Model(inputs=[A_in, X_in], outputs=out)
+model.compile(Adam(), loss=keras.losses.categorical_crossentropy, metrics=['accuracy'])
 model.summary()
 
-# x1 = MyGCN(100, activation='relu', learn_pqr=True)([A_in, X_in])
-# x1 = MyGCN(self._out_dim_a2, activation='relu', learn_pqr=True)([A_in, x1])
-# x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
-#
-# x2 = MyGCN(100, activation='relu', learn_pqr=True)([A_in, X_in])
-# x2 = MyGCN(self._out_dim_x2, activation='relu', learn_pqr=True)([A_in, x2])
-#
-# x3 = Dot(axes=[1, 1])([x1, x2])
-# x3 = Reshape((self._out_dim_a2 * self._out_dim_x2,))(x3)
-# x4 = Dense(num_classes, activation='softmax')(x3)
-#
+x = np.array(X)
+print(x.shape)
+y = keras.utils.to_categorical(Y)
+print(y.shape)
+
+a = tf.data.Dataset.from_tensors(A)
+
+model.fit(y=y, batch_size=188, epochs=100)
