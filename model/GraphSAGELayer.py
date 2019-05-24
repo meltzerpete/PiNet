@@ -2,6 +2,7 @@ from keras import backend as K
 from keras import activations, initializers, regularizers
 from keras.layers import Layer
 from tensorboard import summary
+from tensorflow import SparseTensor
 
 
 class GraphSAGELayer(Layer):
@@ -28,6 +29,26 @@ class GraphSAGELayer(Layer):
 
     def call(self, inputs, **kwargs):
         A, X = inputs
+        # A_indices, A_values, A_shape, X = inputs
+        print("\n\nCALL")
+
+        # A_indices = K.tf.reshape(A_indices, shape=[7442, 3])
+        # A_values = K.flatten(A_values)
+        # A_shape = K.flatten(A_shape)
+        #
+        # print("indices.shape", A_indices.shape, A_indices.dtype)
+        # print("values.shape", A_values.shape, A_values.dtype)
+        # print("shape.shape", A_shape.shape, A_shape.dtype)
+        #
+        # # print("reshape")
+        # # print("indices", A_indices.shape, A_indices.dtype)
+        # # A_values = K.flatten(A_values)
+        # # print("values", A_values.shape, A_values.dtype)
+        # # A_shape = K.flatten(A_shape)
+        # # print("shape", A_shape.shape)
+        #
+        # A = SparseTensor(A_indices, A_values, A_shape)
+        # print(A)
 
         def slice_sparse_matrix(all_A, i):
             n = K.tf.shape(all_A)[-1]
@@ -46,7 +67,7 @@ class GraphSAGELayer(Layer):
             lambda i: self.per_A_X(slice_sparse_matrix(A, i), slice_matrix(X, i)),
             K.arange(0, K.tf.shape(X)[0], 1), infer_shape=False, dtype=K.dtype(X))
 
-        return out
+        return K.tf.cast(out, dtype='float32')
 
     def per_A_X(self, A, X):
         def slice_row(A, i):
@@ -62,7 +83,7 @@ class GraphSAGELayer(Layer):
         return out
 
     def compute_output_shape(self, input_shape):
-        return input_shape[1]
+        return input_shape[-1]
 
     @staticmethod
     def _sample_and_aggregate_neighbours_features(row, X, num_samples):

@@ -22,6 +22,7 @@ class GraphClassifier:
         :param tensor_board_logging: enable logginf for TensorBoard
         :param reduce_lr_callback: reduce learning rate based on validation set
         """
+
     def __init__(self, out_dim_a2=64, out_dim_x2=64, tensor_board_logging=False,
                  reduce_lr_callback=False):
         self._out_dim_a2 = out_dim_a2
@@ -175,10 +176,9 @@ class GraphClassifier:
 
         X_test = np.array([X[i] for i in val_idx])
         X_train = np.array([X[i] for i in train_idx])
-        
+
         Y_test = to_categorical(Y)[val_idx]
         Y_train = to_categorical(Y)[train_idx]
-
 
         return A_test, A_train, X_test, X_train, Y_test, Y_train
 
