@@ -22,33 +22,21 @@ class GraphSAGELayer(Layer):
         self.output_dim = output_dim
         self.activation = activation
         self.num_nodes = num_nodes
+        self.agg_weights = None
+        self.agg_bias = None
 
     def build(self, input_shape):
-        # self.kernel = self.add_weight(name='kernel')
-        pass
+        n, r, c = input_shape[-1]
+
+        self.agg_weights = self.add_weight(name='aggWeights',
+                                           shape=[c * 2, self.output_dim],
+                                           initializer=initializers.glorot_uniform())
+        self.agg_bias = self.add_weight('aggBias',
+                                        shape=[self.output_dim],
+                                        initializer=initializers.zeros())
 
     def call(self, inputs, **kwargs):
         A, X = inputs
-        # A_indices, A_values, A_shape, X = inputs
-        print("\n\nCALL")
-
-        # A_indices = K.tf.reshape(A_indices, shape=[7442, 3])
-        # A_values = K.flatten(A_values)
-        # A_shape = K.flatten(A_shape)
-        #
-        # print("indices.shape", A_indices.shape, A_indices.dtype)
-        # print("values.shape", A_values.shape, A_values.dtype)
-        # print("shape.shape", A_shape.shape, A_shape.dtype)
-        #
-        # # print("reshape")
-        # # print("indices", A_indices.shape, A_indices.dtype)
-        # # A_values = K.flatten(A_values)
-        # # print("values", A_values.shape, A_values.dtype)
-        # # A_shape = K.flatten(A_shape)
-        # # print("shape", A_shape.shape)
-        #
-        # A = SparseTensor(A_indices, A_values, A_shape)
-        # print(A)
 
         def slice_sparse_matrix(all_A, i):
             n = K.tf.shape(all_A)[-1]
@@ -63,11 +51,16 @@ class GraphSAGELayer(Layer):
             reshaped = K.tf.reshape(slice, [n, m])
             return reshaped
 
-        out = K.tf.map_fn(
+        h = K.tf.map_fn(
             lambda i: self.per_A_X(slice_sparse_matrix(A, i), slice_matrix(X, i)),
             K.arange(0, K.tf.shape(X)[0], 1), infer_shape=False, dtype=K.dtype(X))
 
-        return K.tf.cast(out, dtype='float32')
+        # normalise
+
+
+        h.set_shape([X.shape[0], self.num_nodes, self.output_dim])
+
+        return K.tf.cast(h, dtype='float32')
 
     def per_A_X(self, A, X):
         def slice_row(A, i):
@@ -75,24 +68,35 @@ class GraphSAGELayer(Layer):
             ret = K.tf.sparse.slice(A, (i, 0), (1, n))
             return ret
 
-        out = K.tf.map_fn(lambda i: self._sample_and_aggregate_neighbours_features(slice_row(A, i), X,
-                                                                                   self.n_neighbour_samples_per_node),
-                          K.arange(0, self.num_nodes, 1), infer_shape=False, dtype=K.dtype(X))
+        out = K.tf.map_fn(lambda i: self._per_V(i, slice_row(A, i), X,
+                                                self.n_neighbour_samples_per_node),
+                          K.arange(0, K.tf.shape(X)[-2], 1), infer_shape=False, dtype=K.dtype(X))
 
-        out = K.tf.reshape(out, (self.num_nodes, K.tf.shape(X)[-1]))
+
+        weights = K.tf.cast(self.agg_weights, K.dtype(X))
+        bias = K.tf.cast(self.agg_bias, K.dtype(X))
+        out = K.tf.reshape(out, [K.tf.shape(X)[-2], K.tf.shape(X)[-1] * 2])
+        out = K.tf.matmul(out, weights)
+        out = K.bias_add(out, bias)
+
+        out = activations.relu(out)
+
+        # out.csv = K.tf.reshape(out.csv, (K.tf.shape(X)[-2], self.output_dim))
         return out
 
     def compute_output_shape(self, input_shape):
-        return input_shape[-1]
+        n, r, c = input_shape[-1]
+        return n, r, self.output_dim
 
-    @staticmethod
-    def _sample_and_aggregate_neighbours_features(row, X, num_samples):
+    def _per_V(self, i, row, X, num_samples):
         row = K.tf.sparse.to_dense(row)
         reshaped = K.tf.reshape(row, [K.tf.shape(X)[-2]])
         gathered = GraphSAGELayer._gather_neighbour_features(reshaped, X)
         sampled = GraphSAGELayer._sample_neighbour_features(gathered, num_samples)
-        aggregated = GraphSAGELayer._aggregate_neighbour_features(sampled)
-        return aggregated
+        aggregated = self._aggregate_neighbour_features(sampled)
+        v_prev = K.slice(X, [i, 0], [1, K.tf.shape(X)[-1]])
+        out = K.concatenate([v_prev, aggregated])
+        return out
 
     @staticmethod
     def _gather_neighbour_features(adj_row, X_full):
@@ -133,7 +137,6 @@ class GraphSAGELayer(Layer):
                          true_fn=lambda: true_fn(X_neighbours, num_samples),
                          false_fn=lambda: false_fn(X_neighbours, num_samples, num_rows))
 
-    @staticmethod
-    def _aggregate_neighbour_features(X):
+    def _aggregate_neighbour_features(self, X):
         # must return 1 row
         return K.max(X, axis=0)
