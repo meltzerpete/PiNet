@@ -1,12 +1,13 @@
 import os
 import sys
 from time import time
+from datetime import datetime
 
 from keras import Model
 from keras.optimizers import Adam
 from scipy.sparse import csr_matrix
 from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 
 sys.path.append("/home/pete/Dropbox/PycharmProjects/graph-classifier-jan-2019")
 sys.path.append("/home/pete/miniconda3/envs/graph-classifier/lib/python3.6/site-packages")
@@ -152,25 +153,30 @@ else:
 
         if not os.path.isfile('out.csv'):
             writer.writeheader()
+            file.flush()
 
         k.backend.set_session(s)
         all_metrics = []
         for i, split in enumerate(to_tensors(*get_data('MUTAG'))):
             print(f'\nSplit {i}')
 
+            date_time_format = "%Y-%m-%d %H:%M:%S"
+            logdir = f'./logs/{datetime.now().strftime(date_time_format)}/{i}'
+
             A_train, A_test, X_train, X_test, Y_train, Y_test = split
 
             model = build_model(A_train, X_train)
             # model.summary(200)
-            # tb_callback = k.callbacks.TensorBoard(log_dir='./logs',
-            #                                           histogram_freq=0,
-            #                                           write_grads=False,
-            #                                           write_graph=True, write_images=False)
+            tb_callback = k.callbacks.TensorBoard(log_dir=logdir,
+                                                  histogram_freq=0,
+                                                  write_grads=False,
+                                                  write_graph=True,
+                                                  write_images=False)
 
             model.fit(y=Y_train,
-                      epochs=80,
+                      epochs=20,
                       steps_per_epoch=1,
-                      # callbacks=[tb_callback],
+                      callbacks=[tb_callback],
                       verbose=1)
             w = model.get_weights()
 
@@ -187,7 +193,7 @@ else:
 
             cf = confusion_matrix(Y_test, preds)
             metrics = {
-                'time': time(),
+                'time': datetime.now().strftime(date_time_format),
                 'trial': i,
                 'loss': loss,
                 'accuracy': acc,
@@ -196,6 +202,7 @@ else:
             all_metrics.append(metrics)
             print(metrics)
             writer.writerow(metrics)
+            file.flush()
 
     accs = list(map(lambda x: x['accuracy'], all_metrics))
     print("mean acc:", np.mean(accs))

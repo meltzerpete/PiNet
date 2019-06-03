@@ -41,7 +41,7 @@ class GraphSAGELayer(Layer):
         def slice_sparse_matrix(all_A, i):
             n = K.tf.shape(all_A)[-1]
             ret = K.tf.sparse.slice(all_A, (i, 0, 0), (1, n, n))
-            reshaped = K.tf.sparse_reshape(ret, [n, n])
+            reshaped = K.tf.sparse.reshape(ret, [n, n])
             return reshaped
 
         def slice_matrix(all_X, i):
@@ -81,8 +81,12 @@ class GraphSAGELayer(Layer):
 
         out = activations.relu(out)
 
-        # out.csv = K.tf.reshape(out.csv, (K.tf.shape(X)[-2], self.output_dim))
-        return out
+        # out = K.tf.reshape(out, (K.tf.shape(X)[-2], self.output_dim))
+        # return out
+
+        norm = K.tf.norm(out, name="gs_norm")
+        normalised = K.tf.div_no_nan(out, norm, name="gs_normalise")
+        return normalised
 
     def compute_output_shape(self, input_shape):
         n, r, c = input_shape[-1]
@@ -129,7 +133,7 @@ class GraphSAGELayer(Layer):
         def false_fn(X, num_samples, num_rows):
             # too many neighbours -> sample uniform random
             idx = K.arange(num_rows)
-            shuffled_idx = K.tf.random_shuffle(idx)
+            shuffled_idx = K.tf.random.shuffle(idx)
             return K.tf.gather(X, shuffled_idx[:num_samples])
 
         num_rows = K.tf.shape(X_neighbours)[0]
