@@ -8,32 +8,54 @@ from tensorflow import SparseTensor
 class GraphSAGELayer(Layer):
 
     def __init__(self,
-                 aggregator,
                  neighbourhood_sampler,
                  n_neighbour_samples_per_node,
                  output_dim,
                  num_nodes,
                  activation=activations.relu,
+                 aggregator='max',
+                 aggregator_dims=None,
                  **kwargs):
         super(GraphSAGELayer, self).__init__(**kwargs)
-        self.aggregator = aggregator
+        if aggregator == 'max':
+            self.aggregator_fn = self._max_aggregator
+        elif aggregator == 'mean':
+            self.aggregator_fn = self._mean_aggregator
+
+        if aggregator_dims is None:
+            self.aggregator_dims = output_dim
+        else:
+            self.aggregator_dims = aggregator_dims
         self.neighbourhood_sampler = neighbourhood_sampler
         self.n_neighbour_samples_per_node = n_neighbour_samples_per_node
         self.output_dim = output_dim
         self.activation = activation
         self.num_nodes = num_nodes
-        self.agg_weights = None
-        self.agg_bias = None
+        self.concatenation_weights = None
+        self.concatenation_bias = None
+        self.aggregator_weights = None
+        self.aggregator_bias = None
 
     def build(self, input_shape):
         n, r, c = input_shape[-1]
 
-        self.agg_weights = self.add_weight(name='aggWeights',
-                                           shape=[c * 2, self.output_dim],
-                                           initializer=initializers.glorot_uniform())
-        self.agg_bias = self.add_weight('aggBias',
-                                        shape=[self.output_dim],
-                                        initializer=initializers.zeros())
+        self.concatenation_weights = self.add_weight(name='concatenation_weights',
+                                                     regularizer=regularizers.l2(),
+                                                     shape=[c + self.aggregator_dims, self.output_dim],
+                                                     initializer=initializers.glorot_uniform())
+        self.concatenation_bias = self.add_weight('concatenation_bias',
+                                                  shape=[self.output_dim],
+                                                  initializer=initializers.zeros())
+
+        self.aggregator_weights = self.add_weight(name='aggregator_weights',
+                                                  regularizer=regularizers.l2(),
+                                                  shape=[c, self.aggregator_dims],
+                                                  initializer=initializers.glorot_uniform())
+        self.aggregator_bias = self.add_weight('aggregator_bias',
+                                               shape=[self.aggregator_dims],
+                                               initializer=initializers.zeros())
+
+        super(GraphSAGELayer, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, inputs, **kwargs):
         A, X = inputs
@@ -57,7 +79,6 @@ class GraphSAGELayer(Layer):
 
         # normalise
 
-
         h.set_shape([X.shape[0], self.num_nodes, self.output_dim])
 
         return K.tf.cast(h, dtype='float32')
@@ -72,10 +93,9 @@ class GraphSAGELayer(Layer):
                                                 self.n_neighbour_samples_per_node),
                           K.arange(0, K.tf.shape(X)[-2], 1), infer_shape=False, dtype=K.dtype(X))
 
-
-        weights = K.tf.cast(self.agg_weights, K.dtype(X))
-        bias = K.tf.cast(self.agg_bias, K.dtype(X))
-        out = K.tf.reshape(out, [K.tf.shape(X)[-2], K.tf.shape(X)[-1] * 2])
+        weights = K.tf.cast(self.concatenation_weights, K.dtype(X))
+        bias = K.tf.cast(self.concatenation_bias, K.dtype(X))
+        out = K.tf.reshape(out, [K.tf.shape(X)[-2], K.tf.shape(X)[-1] + self.aggregator_dims])
         out = K.tf.matmul(out, weights)
         out = K.bias_add(out, bias)
 
@@ -97,7 +117,7 @@ class GraphSAGELayer(Layer):
         reshaped = K.tf.reshape(row, [K.tf.shape(X)[-2]])
         gathered = GraphSAGELayer._gather_neighbour_features(reshaped, X)
         sampled = GraphSAGELayer._sample_neighbour_features(gathered, num_samples)
-        aggregated = self._aggregate_neighbour_features(sampled)
+        aggregated = self.aggregator_fn(sampled)
         v_prev = K.slice(X, [i, 0], [1, K.tf.shape(X)[-1]])
         out = K.concatenate([v_prev, aggregated])
         return out
@@ -141,6 +161,22 @@ class GraphSAGELayer(Layer):
                          true_fn=lambda: true_fn(X_neighbours, num_samples),
                          false_fn=lambda: false_fn(X_neighbours, num_samples, num_rows))
 
-    def _aggregate_neighbour_features(self, X):
+    def _max_aggregator(self, X):
         # must return 1 row
-        return K.max(X, axis=0)
+        weights = K.tf.cast(self.aggregator_weights, K.dtype(X))
+        bias = K.tf.cast(self.aggregator_bias, K.dtype(X))
+        out = K.tf.matmul(X, weights)
+        out = K.bias_add(out, bias)
+
+        out = activations.relu(out)
+        return K.max(out, axis=0)
+
+    def _mean_aggregator(self, X):
+        # must return 1 row
+        weights = K.tf.cast(self.aggregator_weights, K.dtype(X))
+        bias = K.tf.cast(self.aggregator_bias, K.dtype(X))
+        out = K.tf.matmul(X, weights)
+        out = K.bias_add(out, bias)
+
+        out = activations.relu(out)
+        return K.mean(out, axis=0)

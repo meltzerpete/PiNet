@@ -1,6 +1,4 @@
 import os
-import sys
-from time import time
 from datetime import datetime
 
 from keras import Model
@@ -9,8 +7,6 @@ from scipy.sparse import csr_matrix
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import StratifiedKFold
 
-sys.path.append("/home/pete/Dropbox/PycharmProjects/graph-classifier-jan-2019")
-sys.path.append("/home/pete/miniconda3/envs/graph-classifier/lib/python3.6/site-packages")
 from model.GraphSAGELayer import GraphSAGELayer
 import tensorflow as tf
 import keras as k
@@ -68,27 +64,35 @@ def to_sparse_tensor(A):
     return a
 
 
-def build_model(a, x):
+def build_model(a, x, aggregator='max'):
     global model
     A_in = k.models.Input(tensor=a,
                           name='Ain')
     X_in = k.models.Input(tensor=x,
                           name='Xin')
-    feats = GraphSAGELayer(None, None, 2,
+    feats = GraphSAGELayer(None, 2,
                            name='gs1x',
                            output_dim=32,
+                           aggregator=aggregator,
+                           aggregator_dims=20,
                            num_nodes=28)([A_in, X_in])
-    feats = GraphSAGELayer(None, None, 2,
+    feats = GraphSAGELayer(None, 2,
                            name='gs2x',
+                           aggregator=aggregator,
+                           aggregator_dims=20,
                            output_dim=32,
                            num_nodes=28)([A_in, feats])
 
-    att = GraphSAGELayer(None, None, 2,
+    att = GraphSAGELayer(None, 2,
                          name='gs1a',
+                         aggregator=aggregator,
+                         aggregator_dims=20,
                          output_dim=32,
                          num_nodes=28)([A_in, X_in])
-    att = GraphSAGELayer(None, None, 2,
+    att = GraphSAGELayer(None, 2,
                          name='gs2a',
+                         aggregator=aggregator,
+                         aggregator_dims=20,
                          output_dim=32,
                          num_nodes=28)([A_in, att])
     att = k.layers.Softmax(axis=1, name='softmax')(att)
@@ -146,64 +150,66 @@ else:
 
         import csv
 
-        fieldnames = ['time', 'trial', 'loss', 'accuracy', 'cf']
+        fieldnames = ['time', 'aggregator', 'trial', 'loss', 'accuracy', 'cf']
         writer = csv.DictWriter(file,
                                 fieldnames=fieldnames,
                                 delimiter=';')
 
-        if not os.path.isfile('out.csv'):
-            writer.writeheader()
-            file.flush()
+        writer.writeheader()
+        file.flush()
 
-        k.backend.set_session(s)
-        all_metrics = []
-        for i, split in enumerate(to_tensors(*get_data('MUTAG'))):
-            print(f'\nSplit {i}')
+        for agg in ['mean', 'max']:
 
-            date_time_format = "%Y-%m-%d %H:%M:%S"
-            logdir = f'./logs/{datetime.now().strftime(date_time_format)}/{i}'
+            k.backend.set_session(s)
+            all_metrics = []
+            for i, split in enumerate(to_tensors(*get_data('MUTAG'))):
+                print(f'\nSplit {i}')
 
-            A_train, A_test, X_train, X_test, Y_train, Y_test = split
+                date_time_format = "%Y-%m-%d %H:%M:%S"
+                logdir = f'./logs/{datetime.now().strftime(date_time_format)}/{i}'
 
-            model = build_model(A_train, X_train)
-            # model.summary(200)
-            tb_callback = k.callbacks.TensorBoard(log_dir=logdir,
-                                                  histogram_freq=0,
-                                                  write_grads=False,
-                                                  write_graph=True,
-                                                  write_images=False)
+                A_train, A_test, X_train, X_test, Y_train, Y_test = split
 
-            model.fit(y=Y_train,
-                      epochs=20,
-                      steps_per_epoch=1,
-                      callbacks=[tb_callback],
-                      verbose=1)
-            w = model.get_weights()
+                model = build_model(A_train, X_train, aggregator=agg)
+                # model.summary(200)
+                tb_callback = k.callbacks.TensorBoard(log_dir=logdir,
+                                                      histogram_freq=0,
+                                                      write_grads=False,
+                                                      write_graph=True,
+                                                      write_images=False)
 
-            model2 = build_model(A_test, X_test)
-            model2.set_weights(w)
+                model.fit(y=Y_train,
+                          epochs=50,
+                          steps_per_epoch=1,
+                          callbacks=[tb_callback],
+                          verbose=1)
+                w = model.get_weights()
 
-            loss, acc = model2.evaluate(y=Y_test, steps=1)
+                model2 = build_model(A_test, X_test, aggregator=agg)
+                model2.set_weights(w)
 
-            preds = model2.predict(None, steps=1)
-            preds = np.apply_along_axis(np.argmax, axis=1, arr=preds)
+                loss, acc = model2.evaluate(y=Y_test, steps=1)
 
-            Y_test = s.run(Y_test)
-            Y_test = np.apply_along_axis(np.argmax, axis=1, arr=Y_test)
+                preds = model2.predict(None, steps=1)
+                preds = np.apply_along_axis(np.argmax, axis=1, arr=preds)
 
-            cf = confusion_matrix(Y_test, preds)
-            metrics = {
-                'time': datetime.now().strftime(date_time_format),
-                'trial': i,
-                'loss': loss,
-                'accuracy': acc,
-                'cf': cf.tolist()
-            }
-            all_metrics.append(metrics)
-            print(metrics)
-            writer.writerow(metrics)
-            file.flush()
+                Y_test = s.run(Y_test)
+                Y_test = np.apply_along_axis(np.argmax, axis=1, arr=Y_test)
 
-    accs = list(map(lambda x: x['accuracy'], all_metrics))
-    print("mean acc:", np.mean(accs))
-    print("std. dev:", np.std(accs))
+                cf = confusion_matrix(Y_test, preds)
+                metrics = {
+                    'time': datetime.now().strftime(date_time_format),
+                    'aggregator': agg,
+                    'trial': i,
+                    'loss': loss,
+                    'accuracy': acc,
+                    'cf': cf.tolist()
+                }
+                all_metrics.append(metrics)
+                print(metrics)
+                writer.writerow(metrics)
+                file.flush()
+
+        accs = list(map(lambda x: x['accuracy'], all_metrics))
+        print("mean acc:", np.mean(accs))
+        print("std. dev:", np.std(accs))
