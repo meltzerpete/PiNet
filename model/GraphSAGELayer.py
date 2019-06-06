@@ -62,8 +62,8 @@ class GraphSAGELayer(Layer):
 
         def slice_sparse_matrix(all_A, i):
             n = K.tf.shape(all_A)[-1]
-            ret = K.tf.sparse.slice(all_A, (i, 0, 0), (1, n, n))
-            reshaped = K.tf.sparse.reshape(ret, [n, n])
+            ret = K.tf.sparse_slice(all_A, (i, 0, 0), (1, n, n))
+            reshaped = K.tf.sparse_reshape(ret, [n, n])
             return reshaped
 
         def slice_matrix(all_X, i):
@@ -86,7 +86,7 @@ class GraphSAGELayer(Layer):
     def per_A_X(self, A, X):
         def slice_row(A, i):
             n = K.tf.shape(A)[-1]
-            ret = K.tf.sparse.slice(A, (i, 0), (1, n))
+            ret = K.tf.sparse_slice(A, (i, 0), (1, n))
             return ret
 
         out = K.tf.map_fn(lambda i: self._per_V(i, slice_row(A, i), X,
@@ -113,12 +113,13 @@ class GraphSAGELayer(Layer):
         return n, r, self.output_dim
 
     def _per_V(self, i, row, X, num_samples):
-        row = K.tf.sparse.to_dense(row)
+        row = K.tf.sparse_tensor_to_dense(row)
         reshaped = K.tf.reshape(row, [K.tf.shape(X)[-2]])
         gathered = GraphSAGELayer._gather_neighbour_features(reshaped, X)
         sampled = GraphSAGELayer._sample_neighbour_features(gathered, num_samples)
         aggregated = self.aggregator_fn(sampled)
         v_prev = K.slice(X, [i, 0], [1, K.tf.shape(X)[-1]])
+        v_prev = K.flatten(v_prev)
         out = K.concatenate([v_prev, aggregated])
         return out
 
@@ -153,7 +154,7 @@ class GraphSAGELayer(Layer):
         def false_fn(X, num_samples, num_rows):
             # too many neighbours -> sample uniform random
             idx = K.arange(num_rows)
-            shuffled_idx = K.tf.random.shuffle(idx)
+            shuffled_idx = K.tf.random_shuffle(idx)
             return K.tf.gather(X, shuffled_idx[:num_samples])
 
         num_rows = K.tf.shape(X_neighbours)[0]
@@ -175,6 +176,7 @@ class GraphSAGELayer(Layer):
         # must return 1 row
         weights = K.tf.cast(self.aggregator_weights, K.dtype(X))
         bias = K.tf.cast(self.aggregator_bias, K.dtype(X))
+        X = K.batch_flatten(X)
         out = K.tf.matmul(X, weights)
         out = K.bias_add(out, bias)
 

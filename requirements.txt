@@ -1,7 +1,5 @@
-tensorflow
 scikit-learn
 numpy
-keras
 /home/pete/Dropbox/PycharmProjects/pygamma
 /home/pete/Dropbox/PycharmProjects/py-graph
 tqdm

@@ -13,6 +13,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from ImportData import DropboxLoader
 from model.GCNWithOptionalSum import GCNWithOptionalSum
 from model.GraphClassifier import GraphClassifier
+from model.PiNetGraphSage import PiNetGraphSage
 from model.WLKernel import WLKernel
 
 
@@ -79,13 +80,16 @@ class Benchmark(object):
                 ["classifier", "dataset", "pretty_name", "mean_acc", "acc_std",
                  "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
-            classifiers = [self]
-
             # generate data
             A, X, Y = get_data(dropbox_name)
 
-            Y['graph_label'] = Y['graph_label'].apply(lambda x: 1 if x == 1 else 0, 0)
+            Y['graph_label'] = Y['graph_label'].apply(lambda x: 0 if x == -1 else x, 0)
             # Y = np.array(Y)
+
+            classifiers = [
+                PiNetGraphSage(aggregator='mean', epochs=50, num_samples_per_node=2),
+                PiNetGraphSage(aggregator='max', epochs=50, num_samples_per_node=2),
+            ]
 
             for classifier in classifiers:
                 print("classifier:", classifier.name(), flush=True)
