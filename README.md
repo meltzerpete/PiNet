@@ -5,14 +5,17 @@
 <!-- vim-markdown-toc GFM -->
 
 * [Example Usage](#example-usage)
-* [Computation](#computation)
-* [Evaluation](#evaluation)
+    * [Building the model](#building-the-model)
+    * [Data Format](#data-format)
+    * [Evaluation](#evaluation)
+    * [Prediction Only](#prediction-only)
+* [GCN Layer](#gcnlayer)
 * [Data Generator](#data-generator)
 * [Experiments](#experiments)
 	* [Dependencies](#dependencies)
 	* [Experiment 1: Message Passing Mechanisms](#experiment-1-message-passing-mechanisms)
 	* [Experiment 2: Isomorphism](#experiment-2-isomorphism)
-	* [Experiment 3: Benchmark Against SOA](#experiment-3-benchmark-against-soa)
+	* [Experiment 3: Benchmark Against Existing Methods](#experiment-3-benchmark-against-soa)
 
 <!-- vim-markdown-toc -->
 
@@ -110,7 +113,7 @@ Observe effect of various matrices for message passing/diffusion.
 - main: [analysis/experiment2/IsomorphismExperiment.py](analysis/experiment2/IsomorphismExperiment.py)
 - PiNet: [model/PiNet.py](model/PiNet.py)
 - WL Kernel: [model/WLKernel.py](model/WLKernel.py)
-- patchy-sans: results provided by MG
+- patchy-sans: results provided by Marcelo Gutierrez
 - GCN only (with optional sum before dense): [model/GCNWithOptionalSum.py](model/GCNWithOptionalSum.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
 - analysis: [analysis/experiment2/line-graph.py](analysis/experiment2/line-graph.py)
