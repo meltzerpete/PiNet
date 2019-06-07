@@ -94,7 +94,7 @@ isomorphism test data generator is included though)
 
 Observe effect of various matrices for message passing/diffusion.
 
-- main: [model/ClassificationAccuracyTimeBenchmark.py](model/ClassificationAccuracyTimeBenchmark.py)
+- main: [analysis/experiment1/MessagePassing.py](analysis/experiment1/MessagePassing.py)
 - PiNet: [model/PiNet.py](model/PiNet.py)
 - data: [analysis/experiment1/results-2019-01-29.csv](analysis/experiment1/results-2019-01-29.csv)
 - analysis: [analysis/experiment1/bar-charts.py](analysis/experiment1/bar-charts.py)
