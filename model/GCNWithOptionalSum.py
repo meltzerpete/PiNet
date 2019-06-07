@@ -9,7 +9,7 @@ from keras.optimizers import Adam
 from keras.utils import to_categorical
 from scipy.sparse import csr_matrix
 
-from model.GraphClassifier import GraphClassifier
+from model.PiNet import PiNet
 from model.MyGCN import MyGCN
 
 import time
@@ -63,13 +63,13 @@ class GCNWithOptionalSum:
             # print(model.summary())
 
             model.compile(Adam(), loss='categorical_crossentropy', metrics=['acc'])
-            generator = GraphClassifier().batch_generator([A_train, X_train], y_train, batch_size)
+            generator = PiNet().batch_generator([A_train, X_train], y_train, batch_size)
             start = time.time()
             model.fit_generator(generator, ceil(y_train.shape[0] / batch_size), 200, verbose=0)
             train_time = time.time() - start
 
             stats = model.evaluate_generator(
-                GraphClassifier().batch_generator([A_test, X_test], y_test, batch_size), y_test.shape[0] / batch_size)
+                PiNet().batch_generator([A_test, X_test], y_test, batch_size), y_test.shape[0] / batch_size)
 
             for metric, val in zip(model.metrics_names, stats):
                 print(metric + ": ", val)
