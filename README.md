@@ -30,7 +30,7 @@ should not be used with `learn_pqr=True`)
     - `'sym_normalise_A'`
     - `'laplacian'`
     - `'sym_norm_laplacian'`
-    - could include multiple, i.e.: ['add_self_loops', 'sym_normalise_A']
+    - could include multiple, i.e.: `['add_self_loops', 'sym_normalise_A']`
 - `tensor_board_logging`: enable logging for TensorBoard
 - `reduce_lr_callback`: reduce learning rate based on validation set
 
