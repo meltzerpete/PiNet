@@ -144,8 +144,9 @@ examples_per_classes = [2, 4, 6, 8, 10]
 
 Compare against existing methods on benchmark data.
 
-- main: [analysis/experiment3/ClassificationTimeBenchmark.py](analysis/experiment3/ClassificationAccuracyTimeBenchmark.py)
+- main: [analysis/experiment4/Benchmark.py](analysis/experiment4/Benchmark.py)
 - PiNet: [model/PiNet.py](model/PiNet.py)
+- results table: [analysis/experiment4/table.py](analysis/experiment4/table.py)
 
 |                          | MUTAG             | NCI-1             | NCI-109           | PROTEINS          | PTC          |
 | :----------------------- | :---------------: | :---------------: | :---------------: | :---------------: | :----------: |
