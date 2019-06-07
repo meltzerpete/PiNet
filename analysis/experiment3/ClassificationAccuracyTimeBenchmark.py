@@ -1,44 +1,26 @@
-from keras.models import Model
-from math import ceil
-from keras.utils import to_categorical
-from ImportData import DropboxLoader
-import networkx as nx
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import StratifiedKFold
-from scipy.sparse import csr_matrix
-from keras.layers import Input, Dot, Reshape, Dense, Dropout
-from keras.optimizers import Adam
-from model.MyGCN import MyGCN
-import keras
+#!/opt/conda/bin/python
+import os
 import pickle
+import sys
 import time
 from csv import writer
-import os
+from math import ceil
 
+import keras
+import keras.backend as K
+import networkx as nx
+import numpy as np
+import pandas as pd
+from ImportData import DropboxLoader
+from keras.activations import softmax
+from keras.layers import Input, Dot, Reshape, Dense, Lambda
+from keras.models import Model
+from keras.optimizers import Adam
+from keras.utils import to_categorical
+from scipy.sparse import csr_matrix
+from sklearn.model_selection import StratifiedKFold
 
-def add_self_loops(A):
-    np.fill_diagonal(A, 1)
-    return A
-
-
-def sym_normalise_A(A):
-    # may produce / by 0 warning but this is ok: inf replaced by 0
-    d_hat_with_inf = 1 / np.sqrt(np.sum(A, axis=1))
-    d_hat_with_inf[np.isinf(d_hat_with_inf)] = 0
-    D_hat = np.diag(d_hat_with_inf)
-    A_ = np.dot(D_hat, A).dot(D_hat)
-    return A_
-
-
-def laplacian(A):
-    D = np.diag(np.sum(A, 0))
-    return D - A
-
-
-def sym_norm_laplacian(A):
-    I = np.eye(np.shape(A)[0])
-    return I - sym_normalise_A(A)
+from model.MyGCN import MyGCN
 
 
 def get_A_X(loader, normalise_by_num_nodes=True):
@@ -53,7 +35,6 @@ def get_A_X(loader, normalise_by_num_nodes=True):
         all_X = loader.get_node_label()
         ids = all_X[all_X['node'].isin(nodes_to_keep)].index
         X = pd.get_dummies(all_X['label']).iloc[ids].values
-        # G = nx.from_pandas_edgelist(adj, 'from', 'to')
         g = nx.Graph()
         g.add_nodes_from(ids)
         g.add_edges_from(adj.values)
@@ -86,27 +67,15 @@ def get_A_X(loader, normalise_by_num_nodes=True):
     return padA, padX
 
 
-def get_data(dropbox_name, preprocessA, normalise_by_num_nodes=False):
+def get_data(dropbox_name, normalise_by_num_nodes=False):
     dataset = DropboxLoader(dropbox_name)
 
-    file_path = f'{dropbox_name}_{preprocessA}_{normalise_by_num_nodes}.p'
+    file_path = f'{dropbox_name}.p'
 
     if os.path.isfile(file_path):
         A_list, X = pickle.load(open(file_path, "rb"))
     else:
         A, X = get_A_X(dataset, normalise_by_num_nodes)
-
-        if 'add_self_loops' in preprocessA:
-            A = map(add_self_loops, A)
-
-        if 'sym_normalise_A' in preprocessA:
-            A = map(sym_normalise_A, A)
-
-        if 'laplacian' in preprocessA:
-            A = map(laplacian, A)
-
-        if 'sym_norm_laplacian' in preprocessA:
-            A = map(sym_norm_laplacian, A)
 
         A_list = list(map(csr_matrix, A))
         pickle.dump((A_list, X), open(file_path, "wb"))
@@ -116,14 +85,16 @@ def get_data(dropbox_name, preprocessA, normalise_by_num_nodes=False):
 
 
 def define_model(X, classes, out_dim_a2, out_dim_x2):
+
     A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
     X_in = Input(X[0].shape, name='X_in')
 
-    x1 = MyGCN(100, activation='relu')([A_in, X_in])
-    x1 = MyGCN(out_dim_a2, activation='softmax')([A_in, x1])
+    x1 = MyGCN(100, activation='relu', learn_pqr=True, name='GCN_A1')([A_in, X_in])
+    x1 = MyGCN(out_dim_a2, activation='relu', learn_pqr=True, name='GCN_A2')([A_in, x1])
+    x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
 
-    x2 = MyGCN(100, activation='relu')([A_in, X_in])
-    x2 = MyGCN(out_dim_x2, activation='relu')([A_in, x2])
+    x2 = MyGCN(100, activation='relu', learn_pqr=True, name='GCN_X1')([A_in, X_in])
+    x2 = MyGCN(out_dim_x2, activation='relu', learn_pqr=True, name='GCN_X2')([A_in, x2])
 
     x3 = Dot(axes=[1, 1])([x1, x2])
     x3 = Reshape((out_dim_a2 * out_dim_x2,))(x3)
@@ -182,15 +153,31 @@ def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_d
 
         # model.summary()
 
+        # TODO monitor gradients
         tb_callback = keras.callbacks.TensorBoard(log_dir='./Graph/' + dropbox_name + '/' + str(j),
                                                   histogram_freq=0,
-                                                  write_grads=False,
-                                                  write_graph=True, write_images=False)
+                                                  write_images=True,
+                                                  write_grads=True,
+                                                  write_graph=True)
+
+        lr = 0.01
+        lr_decay = 0.01
+        lr_callback = keras.callbacks.LearningRateScheduler(schedule=lambda epoch: lr * np.exp(- lr_decay * epoch))
 
         reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='val_loss',
                                                                factor=0.1,
                                                                patience=3,
                                                                verbose=1)
+
+        def weights():
+            names = [weight.name for layer in model.layers for weight in layer.weights]
+            weights = model.get_weights()
+
+            for name, weight in zip(names, weights):
+                if weight.shape == (1,) or len(weight.shape) == 0:
+                    print(name, weight)
+
+        print_weights = keras.callbacks.LambdaCallback(on_train_end=lambda logs: weights())
 
         steps = ceil(Y_test.shape[0] / batch_size)
 
@@ -198,8 +185,8 @@ def build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds, out_d
         history = model.fit_generator(generator=batch_generator([A_train, X_train], Y_train, batch_size),
                                       epochs=200,
                                       steps_per_epoch=steps,
-                                      # callbacks=[tb_callback],
-                                      verbose=1)
+                                      callbacks=[print_weights],
+                                      verbose=0)
 
         train_time = time.time() - start
 
@@ -220,7 +207,7 @@ def main():
     with open('out.csv', 'a') as csv_file:
         res_writer = writer(csv_file, delimiter=';')
         res_writer.writerow(
-            ["dataset", "pretty_name", "preprocessA", "normalise_by_num_nodes", "batch_size", "mean_acc", "acc_std",
+            ["dataset", "pretty_name", "preprocessA", "batch_size", "mean_acc", "acc_std",
              "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
         if 'DD' in os.environ.keys():
@@ -233,17 +220,18 @@ def main():
 
         else:
             datasets = {
-                'ENZYMES': {
-                    'preprocess_graph_labels': lambda x: x - 1,
-                    'classes': 6,
-                },
+                # 'ENZYMES': {
+                #     'preprocess_graph_labels': lambda x: x - 1,
+                #     'classes': 6,
+                # },
+                # 'PROTEINS': {},
                 'MUTAG': {},
                 'NCI1': {
                     'pretty_name': 'NCI-1',
                 },
-                'NCI109': {
-                    'pretty_name': 'NCI-109',
-                },
+                # 'NCI109': {
+                #     'pretty_name': 'NCI-109',
+                # },
                 'PTC_MM': {
                     'pretty_name': 'PTC-MM',
                 },
@@ -259,57 +247,64 @@ def main():
             }
             batch_sizes = [50]
 
+            if len(sys.argv) > 1:
+                args = sys.argv[1:]
+                datasets = {
+                    k: v for k, v in map(lambda arg: (arg, datasets[arg]), args)
+                }
+
         out_dim_a2 = 64
         out_dim_x2 = 64
 
-        for preprocessA in [['sym_normalise_A'], ['sym_norm_laplacian']]:
-            for normalise_by_num_nodes in [True, False]:
-                for dataset_name, dataset in datasets.items():
+        for dataset_name, dataset in datasets.items():
 
-                    print("Dataset: ", dataset_name)
+            print("Dataset: ", dataset_name)
 
-                    dropbox_name = dataset['dropbox_name'] \
-                        if 'dropbox_name' in dataset.keys() else dataset_name
+            dropbox_name = dataset['dropbox_name'] \
+                if 'dropbox_name' in dataset.keys() else dataset_name
 
-                    pretty_name = dataset['pretty_name'] \
-                        if 'pretty_name' in dataset.keys() else dataset_name
+            pretty_name = dataset['pretty_name'] \
+                if 'pretty_name' in dataset.keys() else dataset_name
 
-                    preprocess_graph_labels = dataset['preprocess_graph_labels'] \
-                        if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
+            preprocess_graph_labels = dataset['preprocess_graph_labels'] \
+                if 'preprocess_graph_labels' in dataset.keys() else lambda x: 1 if x == 1 else 0
 
-                    classes = dataset['classes'] \
-                        if 'classes' in dataset.keys() else 2
+            classes = dataset['classes'] \
+                if 'classes' in dataset.keys() else 2
 
-                    for batch_size in batch_sizes:
-                        # prepare data
-                        print("preparing data")
+            for batch_size in batch_sizes:
+                keras.backend.clear_session()
 
-                        A_list, X, Y = get_data(dropbox_name, preprocessA, normalise_by_num_nodes)
+                # prepare data
+                print("preparing data")
 
-                        Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
-                        Y = np.array(Y)
+                A_list, X, Y = get_data(dropbox_name, False)
 
-                        folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
+                Y['graph_label'] = Y['graph_label'].apply(preprocess_graph_labels)
+                Y = np.array(Y)
 
-                        accuracies, times = build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds,
-                                                           out_dim_a2, out_dim_x2)
+                folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 
-                        print(dropbox_name)
-                        mean_acc = np.mean(accuracies)
-                        print("mean acc:", mean_acc)
-                        acc_std = np.std(accuracies)
-                        print("std dev:", acc_std)
-                        print("accs:", accuracies)
-                        mean_time = np.mean(times)
-                        print("mean train time", mean_time)
-                        time_std = np.std(times)
-                        print("std dev:", time_std, end="\n\n")
+                accuracies, times = build_fit_eval(A_list, X, Y, batch_size, classes, dropbox_name, folds,
+                                                   out_dim_a2, out_dim_x2)
 
-                        res_writer.writerow(
-                            [dropbox_name, pretty_name, preprocessA, normalise_by_num_nodes,
-                             batch_size, mean_acc, acc_std, mean_time, time_std, accuracies, times])
+                print(dropbox_name)
+                mean_acc = np.mean(accuracies)
+                print("mean acc:", mean_acc)
+                acc_std = np.std(accuracies)
+                print("std dev:", acc_std)
+                print("accs:", accuracies)
+                mean_time = np.mean(times)
+                print("mean train time", mean_time)
+                time_std = np.std(times)
+                print("std dev:", time_std, end="\n\n")
 
-                        csv_file.flush()
+                res_writer.writerow(
+                    [dropbox_name, pretty_name, None, batch_size, mean_acc, acc_std,
+                     mean_time, time_std, accuracies, times])
+
+                csv_file.flush()
 
 
-# main()
+if __name__ == '__main__':
+    main()

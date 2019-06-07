@@ -1,23 +1,25 @@
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
-from model.GraphClassifier import GraphClassifier
+from sklearn.model_selection import StratifiedShuffleSplit
+from model.PiNet import PiNet
 from analysis.experiment2 import generate
-from analysis.experiment2.GCNWithOptionalSum import GCNWithOptionalSum
-from analysis.experiment2.WLKernel import WLKernel
+from model.GCNWithOptionalSum import GCNWithOptionalSum
+
+from model.WLKernel import WLKernel
+
 from csv import writer
 
 
 class IsomorphismExperiment(object):
 
     def name(self):
-        return 'GC'
+        return 'PiNet'
 
     def get_accuracies(self, A, X, Y, num_graph_classes, splits=None, batch_size=None):
-        classifier = GraphClassifier()
+        classifier = PiNet(learn_pqr=False, preprocess_A=None)
 
         accs, times = classifier.fit_eval(A, X, Y, num_classes=num_graph_classes,
                                           epochs=200, batch_size=batch_size, folds=splits,
-                                          preprocess_A=None, verbose=0)
+                                          verbose=0)
         return accs
 
     def main(self):
@@ -33,7 +35,7 @@ class IsomorphismExperiment(object):
         batch_size = 5
         examples_per_classes = [18, 20]
 
-        classifiers = [self]
+        classifiers = [self, WLKernel(), GCNWithOptionalSum(True), GCNWithOptionalSum(False)]
 
         # generate data
         A, X, Y = generate.get_tensors(num_nodes_per_graph,
