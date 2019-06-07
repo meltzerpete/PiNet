@@ -135,11 +135,13 @@ Compare against existing methods on benchmark data.
 - main: [analysis/experiment3/ClassificationTimeBenchmark.py](analysis/experiment3/ClassificationAccuracyTimeBenchmark.py)
 - PiNet: [model/PiNet.py](model/PiNet.py)
 
-|                          | MUTAG              | NCI-1              | NCI-109            | PROTEINS           | PTC           |
-| :----------------------- | :----------------: | :----------------: | :----------------: | :----------------: | :-----------: |
-| GCN + Dense              | $.86 \pm .06$       | .73 \\pm .03       | .72 \\pm .02       | .71 \\pm .04       | .63 \\pm .07  |
-| GCN + Sum                | .86 \\pm .05       | .72 \\pm .03       | .73 \\pm .03       | .74 \\pm .04       | .61 \\pm .05  |
-| PATCHY-SAN               | .85 \\pm .06       | .58 \\pm .02       | .58 \\pm .03       | .70 \\pm .02       | .58 \\pm .02  |
-| WLKernel                 | .68 \\pm .00^{\*}  | .53 \\pm .02^{\*}  | .53 \\pm .03^{\*}  | .61 \\pm .01^{\*}  | .62 \\pm .03  |
-| PiNet (Manual p and q)   | .87 \\pm .08       | .74 \\pm .03       | .73 \\pm .03       | .75 \\pm .06       | .63 \\pm .06  |
-| PiNet (Learned p and q)  | .88 \\pm .07       | .74 \\pm .02       | .71 \\pm .04       | .75 \\pm .06       | .63 \\pm .04  |
+|                          | MUTAG             | NCI-1             | NCI-109           | PROTEINS          | PTC          |
+| :----------------------- | :---------------: | :---------------: | :---------------: | :---------------: | :----------: |
+| GCN + Dense              | .86 +/- .06       | .73 +/- .03       | .72 +/- .02       | .71 +/- .04       | .63 +/- .07  |
+| GCN + Sum                | .86 +/- .05       | .72 +/- .03       | .73 +/- .03       | .74 +/- .04       | .61 +/- .05  |
+| PATCHY-SAN               | .85 +/- .06       | .58 +/- .02       | .58 +/- .03       | .70 +/- .02       | .58 +/- .02  |
+| WLKernel                 | .68 +/- .00*      | .53 +/- .02*      | .53 +/- .03*      | .61 +/- .01*      | .62 +/- .03  |
+| PiNet (Manual p and q)   | .87 +/- .08       | .74 +/- .03       | .73 +/- .03       | .75 +/- .06       | .63 +/- .06  |
+| PiNet (Learned p and q)  | .88 +/- .07       | .74 +/- .02       | .71 +/- .04       | .75 +/- .06       | .63 +/- .04  |
+
+Mean classification accuracies for each classifier. For manual search the values `p` and `q` as follows: MUTAG and PROTEINS `p = 1, q = 0`, NCI-1 and NCI-109 `p = q = 1`, PTC `p = q = 0`. * indicates PiNet (both models) achieved statistically significant gain.
