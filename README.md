@@ -43,14 +43,14 @@ should not be used with `learn_pqr=True`)
 - `reduce_lr_callback`: reduce learning rate based on validation set
 
 ```python
-from model.GraphClassifier import GraphClassifier
+from model.PiNet import PiNet
 from analysis.experiment2 import generate
 from sklearn.model_selection import StratifiedKFold
 
 num_classes = 3
 batch_size = 5
 
-classifier = GraphClassifier()
+pinet = PiNet()
 
 folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 ```
@@ -73,14 +73,14 @@ folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 - `verbose`: default is 1
 
 ```pythons
-accs, times = classifier.fit_eval(A, X, Y, num_classes=num_classes,
+accs, times = pinet.fit_eval(A, X, Y, num_classes=num_classes,
                                   epochs=50, batch_size=batch_size, folds=folds, verbose=0)
 ```
 
 ### Prediction only
 
 ```python
-preds = classifier.get_predictions(A, X, Y, batch_size=batch_size)
+preds = pinet.get_predictions(A, X, Y, batch_size=batch_size)
 ```
 
 ## GCNLayer
