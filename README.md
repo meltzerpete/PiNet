@@ -20,17 +20,19 @@
 
 ### Building The Model
 
-`learn_pqr`: learn message passing parametrisation during training (default is `True`)
 
-`preprocess_A`: List of options as Strings (for manual pre-processing - 
+- `out_dim_a2`: output dimension for attention
+- `out_dim_x2`: output dimension for features
+- `learn_pqr`: learn message passing parametrisation during training (default is `True`)
+- `preprocess_A`: List of options as Strings (for manual pre-processing - 
 should not be used with `learn_pqr=True`)
-
-- `'add_self_loops'`
-- `'sym_normalise_A'`
-- `'laplacian'`
-- `'sym_norm_laplacian'`
-
-could include multiple, i.e.: ['add_self_loops', 'sym_normalise_A']
+    - `'add_self_loops'`
+    - `'sym_normalise_A'`
+    - `'laplacian'`
+    - `'sym_norm_laplacian'`
+    - could include multiple, i.e.: ['add_self_loops', 'sym_normalise_A']
+- `tensor_board_logging`: enable logging for TensorBoard
+- `reduce_lr_callback`: reduce learning rate based on validation set
 
 ```python
 from model.GraphClassifier import GraphClassifier
@@ -39,11 +41,6 @@ from sklearn.model_selection import StratifiedKFold
 
 num_classes = 3
 batch_size = 5
-
-A, X, Y = generate.get_tensors(num_nodes_per_graph=50,
-                               num_graph_classes=num_classes,
-                               num_node_classes=2,
-                               num_graphs_per_class=100)
 
 classifier = GraphClassifier()
 
@@ -59,6 +56,13 @@ folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
 - `Y`: (n x 1) ndarray containing class no.
 
 ### Evaluation
+
+- `num_classes`: number of classes
+- `epochs`: default 200
+- `batch_size`: default 50
+- `folds`: Folds or splits of train/test ids
+- `dataset_name`: default is 'dataset_name'
+- `verbose`: default is 1
 
 ```pythons
 accs, times = classifier.fit_eval(A, X, Y, num_classes=num_classes,
