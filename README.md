@@ -18,6 +18,20 @@
 
 ## Example Usage
 
+### Building The Model
+
+`learn_pqr`: learn message passing parametrisation during training (default is `True`)
+
+`preprocess_A`: List of options as Strings (for manual pre-processing - 
+should not be used with `learn_pqr=True`)
+
+- `'add_self_loops'`
+- `'sym_normalise_A'`
+- `'laplacian'`
+- `'sym_norm_laplacian'`
+
+could include multiple, i.e.: ['add_self_loops', 'sym_normalise_A']
+
 ```python
 from model.GraphClassifier import GraphClassifier
 from analysis.experiment2 import generate
@@ -34,32 +48,33 @@ A, X, Y = generate.get_tensors(num_nodes_per_graph=50,
 classifier = GraphClassifier()
 
 folds = list(StratifiedKFold(n_splits=10, shuffle=True).split(X, Y))
+```
 
-# for evaluation
-# A - List of adjacency matrices as ndarrays
-# X - List of features matrices as ndarrays
-# Y - (n x 1) ndarray containing class no.
-# preprocess_A List of options as Strings
-#   - 'add_self_loops'
-#   - 'sym_normalise_A'
-#   - 'laplacian'
-#   - 'sym_norm_laplacian'
+
+### Data Format
+
+
+- `A`: List of adjacency matrices as ndarrays
+- `X`: List of features matrices as ndarrays
+- `Y`: (n x 1) ndarray containing class no.
+
+### Evaluation
+
+```pythons
 accs, times = classifier.fit_eval(A, X, Y, num_classes=num_classes,
                                   epochs=50, batch_size=batch_size, folds=folds, verbose=0)
+```
 
-# for predictions only
+### Prediction only
+
+```python
 preds = classifier.get_predictions(A, X, Y, batch_size=batch_size)
 ```
 
-## Computation
+## GCNLayer
 
+- GCN: [model/MyGCN.py](model/MyGCN.py)
 - `MyGCN` layer takes a list of `A_` and `X^{l}` as input, and gives a single output of `X^{l+1}` 
-
-## Evaluation
-
-StratifiedKFold:
-- statified splits according to labels
-- returns tuple of arrays of ids for train/test
 
 ## Data Generator
 
@@ -70,23 +85,29 @@ StratifiedKFold:
 ## Dependencies
 
 Add the following to the classpath:
-- https://github.com/jajupmochi/py-graph
-- [PyGamma](https://github.com/BraintreeLtd/PyGamma)
+
+- https://github.com/jajupmochi/py-graph (only needed for `WLKernel`)
+- [PyGamma](https://github.com/BraintreeLtd/PyGamma) (for benchmark data - sorry not yet public,
+isomorphism test data generator is included though)
 
 ## Experiment 1: Message Passing Mechanisms
 
 Observe effect of various matrices for message passing/diffusion.
 
 - main: [model/ClassificationAccuracyTimeBenchmark.py](model/ClassificationAccuracyTimeBenchmark.py)
+- PiNet: [model/PiNet.py](model/PiNet.py)
 - data: [analysis/experiment1/results-2019-01-29.csv](analysis/experiment1/results-2019-01-29.csv)
 - analysis: [analysis/experiment1/bar-charts.py](analysis/experiment1/bar-charts.py)
 
+![](analysis/experiment1/all-matrices.png)
+
 ## Experiment 2: Isomorphism
 
-- main (graph classifier): [analysis/eperiment2/IsomorphismExperiment.py](analysis/experiment2/IsomorphismExperiment.py)
-- WL Kernel: [analysis/experiment2/WLKernel.py](model/WLKernel.py)
-- patchy-sans: provided by MG
-- GCN only (with optional sum before dense): [analysis/experiment2/GCNWithOptionalSum.py](model/GCNWithOptionalSum.py)
+- main: [analysis/experiment2/IsomorphismExperiment.py](analysis/experiment2/IsomorphismExperiment.py)
+- PiNet: [model/PiNet.py](model/PiNet.py)
+- WL Kernel: [model/WLKernel.py](model/WLKernel.py)
+- patchy-sans: results provided by MG
+- GCN only (with optional sum before dense): [model/GCNWithOptionalSum.py](model/GCNWithOptionalSum.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
 - analysis: [analysis/experiment2/line-graph.py](analysis/experiment2/line-graph.py)
 
@@ -107,6 +128,18 @@ examples_per_classes = [2, 4, 6, 8, 10]
 ![](analysis/experiment2/isomorphism-test.svg)
 
 
-## Experiment 3: Benchmark Against SOA
+## Experiment 3: Benchmark Against Existing Methods
 
-- TODO
+Compare against existing methods on benchmark data.
+
+- main: [analysis/experiment3/ClassificationTimeBenchmark.py](analysis/experiment3/ClassificationAccuracyTimeBenchmark.py)
+- PiNet: [model/PiNet.py](model/PiNet.py)
+
+|                          | MUTAG              | NCI-1              | NCI-109            | PROTEINS           | PTC           |
+| :----------------------- | :----------------: | :----------------: | :----------------: | :----------------: | :-----------: |
+| GCN + Dense              | $.86 \pm .06$       | .73 \\pm .03       | .72 \\pm .02       | .71 \\pm .04       | .63 \\pm .07  |
+| GCN + Sum                | .86 \\pm .05       | .72 \\pm .03       | .73 \\pm .03       | .74 \\pm .04       | .61 \\pm .05  |
+| PATCHY-SAN               | .85 \\pm .06       | .58 \\pm .02       | .58 \\pm .03       | .70 \\pm .02       | .58 \\pm .02  |
+| WLKernel                 | .68 \\pm .00^{\*}  | .53 \\pm .02^{\*}  | .53 \\pm .03^{\*}  | .61 \\pm .01^{\*}  | .62 \\pm .03  |
+| PiNet (Manual p and q)   | .87 \\pm .08       | .74 \\pm .03       | .73 \\pm .03       | .75 \\pm .06       | .63 \\pm .06  |
+| PiNet (Learned p and q)  | .88 \\pm .07       | .74 \\pm .02       | .71 \\pm .04       | .75 \\pm .06       | .63 \\pm .04  |

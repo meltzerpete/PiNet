@@ -12,21 +12,21 @@ from sklearn.model_selection import StratifiedShuffleSplit
 
 from ImportData import DropboxLoader
 from model.GCNWithOptionalSum import GCNWithOptionalSum
-from model.GraphClassifier import GraphClassifier
+from model.PiNet import PiNet
 from model.WLKernel import WLKernel
 
 
 class Benchmark(object):
 
     def name(self):
-        return 'GC'
+        return 'PiNet'
 
     def get_accs_times(self, A, X, Y, num_graph_classes, splits=None, batch_size=None):
-        classifier = GraphClassifier()
+        classifier = PiNet()
 
         accs, times = classifier.fit_eval(A, X, Y, num_classes=num_graph_classes,
                                           epochs=200, batch_size=batch_size, folds=splits,
-                                          preprocess_A=None, verbose=0)
+                                          verbose=0)
         return accs, times
 
     def main(self):
@@ -79,13 +79,12 @@ class Benchmark(object):
                 ["classifier", "dataset", "pretty_name", "mean_acc", "acc_std",
                  "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
-            classifiers = [self]
+            classifiers = [self, WLKernel(), GCNWithOptionalSum(with_sum=True), GCNWithOptionalSum(with_sum=False)]
 
             # generate data
             A, X, Y = get_data(dropbox_name)
 
             Y['graph_label'] = Y['graph_label'].apply(lambda x: 1 if x == 1 else 0, 0)
-            # Y = np.array(Y)
 
             for classifier in classifiers:
                 print("classifier:", classifier.name(), flush=True)
@@ -112,7 +111,6 @@ def get_A_X(loader, normalise_by_num_nodes=True):
         all_X = loader.get_node_label()
         ids = all_X[all_X['node'].isin(nodes_to_keep)].index
         X = pd.get_dummies(all_X['label']).iloc[ids].values
-        # G = nx.from_pandas_edgelist(adj, 'from', 'to')
         g = nx.Graph()
         g.add_nodes_from(ids)
         g.add_edges_from(adj.values)

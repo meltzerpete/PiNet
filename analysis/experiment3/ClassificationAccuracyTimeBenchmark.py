@@ -1,31 +1,27 @@
 #!/opt/conda/bin/python
-from keras.activations import sigmoid, softmax
-from keras.callbacks import TerminateOnNaN
-from keras.models import Model
-from math import ceil
-from keras.utils import to_categorical
-from ImportData import DropboxLoader
-import networkx as nx
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import StratifiedKFold
-from scipy.sparse import csr_matrix
-from keras.layers import Input, Dot, Reshape, Dense, Dropout, Lambda
-from keras.optimizers import Adam
-from model.MyGCN import MyGCN
-import keras
+import os
 import pickle
+import sys
 import time
 from csv import writer
-import os
+from math import ceil
+
+import keras
 import keras.backend as K
-import tensorflow as tf
-from tensorflow.python import debug as tf_debug
-import sys
+import networkx as nx
+import numpy as np
+import pandas as pd
+from ImportData import DropboxLoader
+from keras.activations import softmax
+from keras.layers import Input, Dot, Reshape, Dense, Lambda
+from keras.models import Model
+from keras.optimizers import Adam
+from keras.utils import to_categorical
+from scipy.sparse import csr_matrix
+from sklearn.model_selection import StratifiedKFold
 
+from model.MyGCN import MyGCN
 
-# keras.backend.set_session(
-#     tf_debug.TensorBoardDebugWrapperSession(tf.Session(), "the-proff:3333"))
 
 def get_A_X(loader, normalise_by_num_nodes=True):
     all_adj = loader.get_adj()
@@ -39,7 +35,6 @@ def get_A_X(loader, normalise_by_num_nodes=True):
         all_X = loader.get_node_label()
         ids = all_X[all_X['node'].isin(nodes_to_keep)].index
         X = pd.get_dummies(all_X['label']).iloc[ids].values
-        # G = nx.from_pandas_edgelist(adj, 'from', 'to')
         g = nx.Graph()
         g.add_nodes_from(ids)
         g.add_edges_from(adj.values)
@@ -90,12 +85,6 @@ def get_data(dropbox_name, normalise_by_num_nodes=False):
 
 
 def define_model(X, classes, out_dim_a2, out_dim_x2):
-
-    px = K.variable(0, name='px')
-    qx = K.variable(0, name='qx')
-
-    pa = K.variable(0.0, name='pa')
-    qa = K.variable(0.0, name='qa')
 
     A_in = Input((X[0].shape[0], X[0].shape[0]), name='A_in')
     X_in = Input(X[0].shape, name='X_in')

@@ -14,18 +14,28 @@ from scipy.sparse import csr_matrix
 from model.MyGCN import MyGCN
 
 
-class GraphClassifier:
+class PiNet:
     """
-    Graph Classifier
+    PiNet
         :param out_dim_a2: output dimension for attention
         :param out_dim_x2: output dimension for features
-        :param tensor_board_logging: enable logginf for TensorBoard
+        :param learn_pqr: learn message passing matrix parameters during training
+        :param preprocess_A: List of 'add_self_loops', 'sym_normalise_A', 'laplacian', 'sym_norm_laplacian', default: None
+        :param tensor_board_logging: enable logging for TensorBoard
         :param reduce_lr_callback: reduce learning rate based on validation set
         """
-    def __init__(self, out_dim_a2=64, out_dim_x2=64, tensor_board_logging=False,
+
+    def __init__(self,
+                 out_dim_a2=64,
+                 out_dim_x2=64,
+                 learn_pqr=True,
+                 preprocess_A=None,
+                 tensor_board_logging=False,
                  reduce_lr_callback=False):
         self._out_dim_a2 = out_dim_a2
         self._out_dim_x2 = out_dim_x2
+        self.learn_pqr = learn_pqr
+        self.preprocess_A = preprocess_A
         self._tensor_board_logging = tensor_board_logging
         self._reduce_lr_callback = reduce_lr_callback
 
@@ -56,7 +66,7 @@ class GraphClassifier:
             generator=self._pred_batch_generator([A, X], Y, batch_size), steps=steps)
 
     def fit_eval(self, A, X, Y, num_classes, epochs=200, batch_size=50,
-                 folds=None, dataset_name='dataset_name', preprocess_A=None, verbose=1):
+                 folds=None, dataset_name='dataset_name', verbose=1):
         """
 
         :param A: Adjacency matrices - List of ndarrays
@@ -67,13 +77,12 @@ class GraphClassifier:
         :param batch_size: default 50
         :param folds: Folds or splits of train/test ids
         :param dataset_name: default is 'dataset_name'
-        :param preprocess_A: List of 'add_self_loops', 'sym_normalise_A', 'laplacian', 'sym_norm_laplacian', default: None
         :param verbose: default is 1
         :return: Tuple(List of accuracies, List of training times)
         """
         if verbose > 0:
-            print('preprocess A:', preprocess_A)
-        A = self._preprocess_A(A, preprocess_A)
+            print('preprocess A:', self.preprocess_A)
+        A = self._preprocess_A(A, self.preprocess_A)
 
         accuracies = []
         times = []
@@ -157,7 +166,7 @@ class GraphClassifier:
         X_in = Input(X_shape, name='X_in')
 
         x1 = MyGCN(100, activation='relu', learn_pqr=True)([A_in, X_in])
-        x1 = MyGCN(self._out_dim_a2, activation='relu', learn_pqr=True)([A_in, x1])
+        x1 = MyGCN(self._out_dim_a2, activation='relu', learn_pqr=self.learn_pqr)([A_in, x1])
         x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
 
         x2 = MyGCN(100, activation='relu', learn_pqr=True)([A_in, X_in])
@@ -175,10 +184,9 @@ class GraphClassifier:
 
         X_test = np.array([X[i] for i in val_idx])
         X_train = np.array([X[i] for i in train_idx])
-        
+
         Y_test = to_categorical(Y)[val_idx]
         Y_train = to_categorical(Y)[train_idx]
-
 
         return A_test, A_train, X_test, X_train, Y_test, Y_train
 
