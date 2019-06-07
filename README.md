@@ -1,6 +1,6 @@
 # PiNet: A Permutation Invariant Graph Neural Network for Graph Classification
 
-Work on this project is ongoing and s described in detail [here](https://arxiv.org/abs/1905.03046).
+Work on this project is ongoing and is described in detail [here](https://arxiv.org/abs/1905.03046).
 
 If this work is of interest to you, or you use the code, I'd love your feedback.
 Please email me at p.meltzer@cs.ucl.ac.uk with any comments, criticisms or suggestions! :D
