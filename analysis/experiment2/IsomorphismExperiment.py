@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import StratifiedShuffleSplit
 from model.PiNet import PiNet
 from analysis.experiment2 import generate
-from model.GCNWithOptionalSum import GCNWithOptionalSum
+from model.GCNWithOptionalMean import GCNWithOptionalMean
 
 from model.WLKernel import WLKernel
 
@@ -35,7 +35,7 @@ class IsomorphismExperiment(object):
         batch_size = 5
         examples_per_classes = [18, 20]
 
-        classifiers = [self, WLKernel(), GCNWithOptionalSum(True), GCNWithOptionalSum(False)]
+        classifiers = [self, WLKernel(), GCNWithOptionalMean(True), GCNWithOptionalMean(False)]
 
         # generate data
         A, X, Y = generate.get_tensors(num_nodes_per_graph,

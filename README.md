@@ -119,7 +119,7 @@ Observe effect of various matrices for message passing/diffusion.
 - PiNet: [model/PiNet.py](model/PiNet.py)
 - WL Kernel: [model/WLKernel.py](model/WLKernel.py)
 - patchy-sans: results provided by Marcelo Gutierrez
-- GCN only (with optional sum before dense): [model/GCNWithOptionalSum.py](model/GCNWithOptionalSum.py)
+- GCN only (with optional mean before dense): [model/GCNWithOptionalMean.py](model/GCNWithOptionalMean.py)
 - data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
 - analysis: [analysis/experiment2/line-graph.py](analysis/experiment2/line-graph.py)
 

@@ -11,7 +11,7 @@ from scipy.sparse import csr_matrix
 from sklearn.model_selection import StratifiedShuffleSplit
 
 from ImportData import DropboxLoader
-from model.GCNWithOptionalSum import GCNWithOptionalSum
+from model.GCNWithOptionalMean import GCNWithOptionalMean
 from model.PiNet import PiNet
 from model.WLKernel import WLKernel
 
@@ -79,7 +79,7 @@ class Benchmark(object):
                 ["classifier", "dataset", "pretty_name", "mean_acc", "acc_std",
                  "mean_train_time(s)", "time_std", "all_accs", "all_times"])
 
-            classifiers = [self, WLKernel(), GCNWithOptionalSum(with_sum=True), GCNWithOptionalSum(with_sum=False)]
+            classifiers = [self, WLKernel(), GCNWithOptionalMean(with_mean=True), GCNWithOptionalMean(with_mean=False)]
 
             # generate data
             A, X, Y = get_data(dropbox_name)

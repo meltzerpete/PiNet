@@ -15,12 +15,12 @@ from model.MyGCN import MyGCN
 import time
 
 
-class GCNWithOptionalSum:
-    def __init__(self, with_sum=False):
-        self.with_sum = with_sum
+class GCNWithOptionalMean:
+    def __init__(self, with_mean=False):
+        self.with_mean = with_mean
 
     def name(self):
-        return 'GCNWithSum' if self.with_sum else 'GCNNoSum'
+        return 'GCNWithMean' if self.with_mean else 'GCNNoMean'
 
     def get_accuracies(self, A, X, Y, num_graph_classes, splits=None, batch_size=None):
         return self.get_accs_times(A, X, Y, num_graph_classes, splits, batch_size)[0]
@@ -55,7 +55,7 @@ class GCNWithOptionalSum:
 
             x1 = MyGCN(100, activation='relu')([A_in, X_in])
             x2 = MyGCN(64, activation='relu')([A_in, x1])
-            x3 = Lambda(lambda x: K.sum(x, axis=1))(x2) if self.with_sum else Flatten()(x2)
+            x3 = Lambda(lambda x: K.mean(x, axis=1))(x2) if self.with_mean else Flatten()(x2)
             x4 = Dense(num_graph_classes, activation='softmax')(x3)
 
             model = Model(inputs=[A_in, X_in], outputs=x4)
