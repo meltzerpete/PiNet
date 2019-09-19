@@ -4,8 +4,6 @@ from model.PiNet import PiNet
 from analysis.experiment2 import generate
 from model.GCNWithOptionalMean import GCNWithOptionalMean
 
-from model.WLKernel import WLKernel
-
 from csv import writer
 
 
@@ -33,9 +31,9 @@ class IsomorphismExperiment(object):
         num_node_classes = 2
         num_graphs_per_class = 100
         batch_size = 5
-        examples_per_classes = [18, 20]
+        examples_per_classes = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
 
-        classifiers = [self, WLKernel(), GCNWithOptionalMean(True), GCNWithOptionalMean(False)]
+        classifiers = [self, GCNWithOptionalMean(True), GCNWithOptionalMean(False)]
 
         # generate data
         A, X, Y = generate.get_tensors(num_nodes_per_graph,
