@@ -13,7 +13,7 @@ class IsomorphismExperiment(object):
         return 'PiNet'
 
     def get_accuracies(self, A, X, Y, num_graph_classes, splits=None, batch_size=None):
-        classifier = PiNet(learn_pqr=False, preprocess_A=None)
+        classifier = PiNet(learn_pqr=False, preprocess_A=None, out_dim_a2=32, out_dim_x2=32)
 
         accs, times = classifier.fit_eval(A, X, Y, num_classes=num_graph_classes,
                                           epochs=200, batch_size=batch_size, folds=splits,

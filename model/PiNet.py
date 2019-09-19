@@ -165,12 +165,12 @@ class PiNet:
         A_in = Input((X_shape[0], X_shape[0]), name='A_in')
         X_in = Input(X_shape, name='X_in')
 
-        x1 = MyGCN(100, activation='relu', learn_pqr=True)([A_in, X_in])
-        x1 = MyGCN(self._out_dim_a2, activation='relu', learn_pqr=self.learn_pqr)([A_in, x1])
+        x1 = MyGCN(32, activation='relu', p=0, q=1)([A_in, X_in])
+        x1 = MyGCN(self._out_dim_a2, activation='relu', p=0, q=1)([A_in, x1])
         x1 = Lambda(lambda X: K.transpose(softmax(K.transpose(X))))(x1)
 
-        x2 = MyGCN(100, activation='relu', learn_pqr=True)([A_in, X_in])
-        x2 = MyGCN(self._out_dim_x2, activation='relu', learn_pqr=True)([A_in, x2])
+        x2 = MyGCN(32, activation='relu', p=0, q=1)([A_in, X_in])
+        x2 = MyGCN(self._out_dim_x2, activation='relu', p=0, q=1)([A_in, x2])
 
         x3 = Dot(axes=[1, 1])([x1, x2])
         x3 = Reshape((self._out_dim_a2 * self._out_dim_x2,))(x3)
