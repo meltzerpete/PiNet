@@ -1,10 +1,10 @@
-# PiNet: A Permutation Invariant Graph Neural Network for Graph Classification
+# PiNet: Attention Pooling for Graph Classification
 
 Work on this project is ongoing and is described in detail in the original [paper](https://arxiv.org/abs/1905.03046).
 
-If you use this work, please cite the following work:
+If you use this work, please cite the following paper:
 
-> Meltzer, P., Mallea, M. D. G., & Bentley, P. J. (2019). PiNet: A Permutation Invariant Graph Neural Network for Graph Classification. arXiv preprint arXiv:1905.03046.
+> Meltzer, P., Mallea, M. D. G., & Bentley, P. J. (2019). PiNet: Attention Pooling for Graph Classification, NeurIPS 2019 Graph Representation Learning Workshop
 
 If this work is of interest to you, or you use the code, I'd love your feedback.
 Please email me at p.meltzer@cs.ucl.ac.uk with any comments, criticisms or suggestions! :D
@@ -97,14 +97,6 @@ preds = pinet.get_predictions(A, X, Y, batch_size=batch_size)
 - [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
 
 # Experiments
-
-## Dependencies
-
-Add the following to the classpath:
-
-- https://github.com/jajupmochi/py-graph (only needed for `WLKernel`)
-- [PyGamma](https://github.com/BraintreeLtd/PyGamma) (for benchmark data - sorry not yet public,
-isomorphism test data generator is included though)
 
 ## Experiment 1: Isomorphism
 
