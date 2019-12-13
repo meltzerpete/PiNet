@@ -1,6 +1,6 @@
 # PiNet: Attention Pooling for Graph Classification
 
-Work on this project is ongoing and is described in detail in the original [paper](https://arxiv.org/abs/1905.03046).
+Work on this project is ongoing and is described in detail in the original [paper](https://grlearning.github.io/papers/70.pdf).
 
 If you use this work, please cite the following paper:
 
