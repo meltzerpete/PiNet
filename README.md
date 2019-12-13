@@ -106,13 +106,7 @@ Add the following to the classpath:
 - [PyGamma](https://github.com/BraintreeLtd/PyGamma) (for benchmark data - sorry not yet public,
 isomorphism test data generator is included though)
 
-## Experiment 1: Message Passing Mechanisms
-
-Observe effect of various matrices for message passing/diffusion.
-
-![](analysis/experiment1/all-matrices.png)
-
-## Experiment 2: Isomorphism
+## Experiment 1: Isomorphism
 
 params:
 
@@ -126,26 +120,20 @@ examples_per_classes = [2, 4, 6, 8, 10]
 ```
 
 - train set selected by stratified sample
-- repeated 10x per `exmaples_per_classes`
+- repeated 10x per `examples_per_classes`
 
 ![](analysis/experiment2/Screenshot_20191212-192411_Dropbox.jpg)
 
+## Experiment 2: Message Passing Mechanisms
+
+Observe effect of various matrices for message passing/diffusion.
+
+![](analysis/experiment1/all-matrices.png)
 
 ## Experiment 3: Benchmark Against Existing Methods
 
 Compare against existing methods on benchmark data.
 
-- main: [analysis/experiment4/Benchmark.py](analysis/experiment4/Benchmark.py)
-- PiNet: [model/PiNet.py](model/PiNet.py)
-- results table: [analysis/experiment4/table.py](analysis/experiment4/table.py)
-
-|                          | MUTAG             | NCI-1             | NCI-109           | PROTEINS          | PTC          |
-| :----------------------- | :---------------: | :---------------: | :---------------: | :---------------: | :----------: |
-| GCN + Dense              | .86 +/- .06       | .73 +/- .03       | .72 +/- .02       | .71 +/- .04       | .63 +/- .07  |
-| GCN + Sum                | .86 +/- .05       | .72 +/- .03       | .73 +/- .03       | .74 +/- .04       | .61 +/- .05  |
-| PATCHY-SAN               | .85 +/- .06       | .58 +/- .02       | .58 +/- .03       | .70 +/- .02       | .58 +/- .02  |
-| WLKernel                 | .68 +/- .00*      | .53 +/- .02*      | .53 +/- .03*      | .61 +/- .01*      | .62 +/- .03  |
-| PiNet (Manual p and q)   | .87 +/- .08       | .74 +/- .03       | .73 +/- .03       | .75 +/- .06       | .63 +/- .06  |
-| PiNet (Learned p and q)  | .88 +/- .07       | .74 +/- .02       | .71 +/- .04       | .75 +/- .06       | .63 +/- .04  |
+![](analysis/experiment4/Screenshot_20191212-193027_Dropbox.jpg)
 
 Mean classification accuracies for each classifier. For manual search the values `p` and `q` as follows: MUTAG and PROTEINS `p = 1, q = 0`, NCI-1 and NCI-109 `p = q = 1`, PTC `p = q = 0`. * indicates PiNet (both models) achieved statistically significant gain.
