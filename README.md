@@ -110,22 +110,9 @@ isomorphism test data generator is included though)
 
 Observe effect of various matrices for message passing/diffusion.
 
-- main: [analysis/experiment1/MessagePassing.py](analysis/experiment1/MessagePassing.py)
-- PiNet: [model/PiNet.py](model/PiNet.py)
-- data: [analysis/experiment1/results-2019-01-29.csv](analysis/experiment1/results-2019-01-29.csv)
-- analysis: [analysis/experiment1/bar-charts.py](analysis/experiment1/bar-charts.py)
-
 ![](analysis/experiment1/all-matrices.png)
 
 ## Experiment 2: Isomorphism
-
-- main: [analysis/experiment2/IsomorphismExperiment.py](analysis/experiment2/IsomorphismExperiment.py)
-- PiNet: [model/PiNet.py](model/PiNet.py)
-- WL Kernel: [model/WLKernel.py](model/WLKernel.py)
-- patchy-sans: results provided by Marcelo Gutierrez
-- GCN only (with optional mean before dense): [model/GCNWithOptionalMean.py](model/GCNWithOptionalMean.py)
-- data generator: [analysis/experiment2/generate.py](analysis/experiment2/generate.py)
-- analysis: [analysis/experiment2/line-graph.py](analysis/experiment2/line-graph.py)
 
 params:
 
