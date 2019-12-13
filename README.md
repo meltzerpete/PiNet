@@ -141,7 +141,7 @@ examples_per_classes = [2, 4, 6, 8, 10]
 - train set selected by stratified sample
 - repeated 10x per `exmaples_per_classes`
 
-![](analysis/experiment2/isomorphism-test.svg)
+![](analysis/experiment2/Screenshot_20191212-192411_Dropbox.jpg)
 
 
 ## Experiment 3: Benchmark Against Existing Methods
