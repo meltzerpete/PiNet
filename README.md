@@ -21,7 +21,6 @@ Please email me at p.meltzer@cs.ucl.ac.uk with any comments, criticisms or sugge
 * [GCN Layer](#gcnlayer)
 * [Data Generator](#data-generator)
 * [Experiments](#experiments)
-	* [Dependencies](#dependencies)
 	* [Experiment 1: Message Passing Mechanisms](#experiment-1-message-passing-mechanisms)
 	* [Experiment 2: Isomorphism](#experiment-2-isomorphism)
 	* [Experiment 3: Benchmark Against Existing Methods](#experiment-3-benchmark-against-soa)
