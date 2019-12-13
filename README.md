@@ -9,6 +9,8 @@ If you use this work, please cite the following paper:
 If this work is of interest to you, or you use the code, I'd love your feedback.
 Please email me at p.meltzer@cs.ucl.ac.uk with any comments, criticisms or suggestions! :D
 
+A Pytorch implementation of Pinet can be found [here](https://github.com/meltzerpete/pinet2).
+
 ### TOC
 
 <!-- vim-markdown-toc GFM -->
